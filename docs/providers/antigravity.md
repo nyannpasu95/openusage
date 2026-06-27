@@ -227,9 +227,9 @@ Base URLs tried in order:
 
 ### agy keychain fallback
 
-`agy` stores its auth in the macOS Keychain under service `gemini`, account `antigravity`. OpenUsage reads that exact account only; it does not use legacy Gemini CLI files.
+`agy` stores its auth in the macOS Keychain under service `gemini`, account `antigravity`. OhMyUsage reads that exact account only; it does not use legacy Gemini CLI files.
 
-For `agy`, OpenUsage calls:
+For `agy`, OhMyUsage calls:
 
 1. `POST /v1internal:loadCodeAssist`
 2. `POST /v1internal:retrieveUserQuota`

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "OpenUsage",
+  "productName": "OhMyUsage",
   "version": "0.6.28",
   "identifier": "com.sunstory.openusage",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "OpenUsage",
+        "title": "OhMyUsage",
         "width": 400,
         "height": 500,
         "resizable": false,

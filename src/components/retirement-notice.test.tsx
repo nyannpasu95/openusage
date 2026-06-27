@@ -36,28 +36,28 @@ describe("RetirementNotice", () => {
 
   it("shows the notice when never dismissed", async () => {
     render(<RetirementNotice />)
-    expect(await screen.findByText("OpenUsage Has Moved")).toBeInTheDocument()
+    expect(await screen.findByText("OhMyUsage Has Moved")).toBeInTheDocument()
   })
 
   it("stays hidden when dismissed within the interval", async () => {
     settingsState.loadMock.mockResolvedValue(Date.now())
     render(<RetirementNotice />)
     await waitFor(() => expect(settingsState.loadMock).toHaveBeenCalled())
-    expect(screen.queryByText("OpenUsage Has Moved")).not.toBeInTheDocument()
+    expect(screen.queryByText("OhMyUsage Has Moved")).not.toBeInTheDocument()
   })
 
   it("opens the new app link", async () => {
     render(<RetirementNotice />)
-    await screen.findByText("OpenUsage Has Moved")
+    await screen.findByText("OhMyUsage Has Moved")
     await userEvent.click(screen.getByRole("button", { name: "Get the New App" }))
     expect(openerState.openUrlMock).toHaveBeenCalledWith("https://www.openusage.ai")
   })
 
   it("persists a timestamp and hides on dismiss", async () => {
     render(<RetirementNotice />)
-    await screen.findByText("OpenUsage Has Moved")
+    await screen.findByText("OhMyUsage Has Moved")
     await userEvent.click(screen.getByRole("button", { name: "Dismiss" }))
-    expect(screen.queryByText("OpenUsage Has Moved")).not.toBeInTheDocument()
+    expect(screen.queryByText("OhMyUsage Has Moved")).not.toBeInTheDocument()
     await waitFor(() => expect(settingsState.saveMock).toHaveBeenCalledTimes(1))
     expect(typeof settingsState.saveMock.mock.calls[0][0]).toBe("number")
   })
@@ -66,7 +66,7 @@ describe("RetirementNotice", () => {
     settingsState.loadMock.mockRejectedValue(new Error("boom"))
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     render(<RetirementNotice />)
-    expect(await screen.findByText("OpenUsage Has Moved")).toBeInTheDocument()
+    expect(await screen.findByText("OhMyUsage Has Moved")).toBeInTheDocument()
     errorSpy.mockRestore()
   })
 })

@@ -49,12 +49,12 @@
       if (raw) {
         const parsed = ctx.util.tryParseJson(raw);
         if (parsed && parsed.token) {
-          ctx.host.log.info("token loaded from OpenUsage keychain");
+          ctx.host.log.info("token loaded from OhMyUsage keychain");
           return { token: parsed.token, source: "keychain" };
         }
       }
     } catch (e) {
-      ctx.host.log.info("OpenUsage keychain read failed: " + String(e));
+      ctx.host.log.info("OhMyUsage keychain read failed: " + String(e));
     }
     return null;
   }
@@ -196,7 +196,7 @@
       );
     }
 
-    // Persist gh-cli token to OpenUsage keychain for future use
+    // Persist gh-cli token to OhMyUsage keychain for future use
     if (source === "gh-cli") {
       saveToken(ctx, token);
     }

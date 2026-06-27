@@ -1,10 +1,10 @@
-# Contributing to OpenUsage
+# Contributing to OhMyUsage
 
-OpenUsage accepts contributions, but has a high quality bar. Read this entire document before opening a PR.
+OhMyUsage accepts contributions, but has a high quality bar. Read this entire document before opening a PR.
 
 ## Philosophy
 
-OpenUsage is highly opinionated. It focuses on clean design, fast performance, and a great user experience. The feature set is intentionally limited to core functionality: tracking AI coding subscription usage, nothing more. Contributions that try to expand that scope, add unnecessary complexity, or compromise the UX will be closed.
+OhMyUsage is highly opinionated. It focuses on clean design, fast performance, and a great user experience. The feature set is intentionally limited to core functionality: tracking AI coding subscription usage, nothing more. Contributions that try to expand that scope, add unnecessary complexity, or compromise the UX will be closed.
 
 If you're unsure whether your idea fits, open an issue first.
 
@@ -15,7 +15,7 @@ If you're unsure whether your idea fits, open an issue first.
 - Test your changes. If it touches UI, include before/after screenshots.
 - Keep it simple. Don't over-engineer.
 - One PR per concern. Don't bundle unrelated changes.
-- Match the existing design language. OpenUsage has a specific look and feel.
+- Match the existing design language. OhMyUsage has a specific look and feel.
 
 ## License Agreement
 

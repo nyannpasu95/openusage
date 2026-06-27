@@ -1,6 +1,6 @@
 # How to Capture Logs for a Bug Report
 
-Use this when OpenUsage is not working and you need to share debug info.
+Use this when OhMyUsage is not working and you need to share debug info.
 
 - Audience: non-technical users
 - Time: ~2 minutes
@@ -8,12 +8,12 @@ Use this when OpenUsage is not working and you need to share debug info.
 
 ## 1) Set log level to Debug
 
-1. In your macOS menu bar, find the OpenUsage icon.
+1. In your macOS menu bar, find the OhMyUsage icon.
 2. Right-click it (or hold `Control` and click).
 3. Open `Debug Level`.
 4. Select `Debug`.
 
-If OpenUsage does not open at all, skip this step and continue.
+If OhMyUsage does not open at all, skip this step and continue.
 
 ## 2) Reproduce the issue once
 
@@ -48,7 +48,7 @@ What I expected:
 What happened instead:
 When it happened (local time + timezone):
 Which provider was affected (Codex / Claude / Cursor / etc.):
-OpenUsage version:
+OhMyUsage version:
 ```
 
 ## Privacy note

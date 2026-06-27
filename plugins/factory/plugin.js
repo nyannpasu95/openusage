@@ -321,7 +321,7 @@
         Authorization: "Bearer " + accessToken,
         "Content-Type": "application/json",
         Accept: "application/json",
-        "User-Agent": "OpenUsage",
+        "User-Agent": "OhMyUsage",
       },
       bodyText: JSON.stringify({ useCache: true }),
       timeoutMs: 10000,
@@ -334,7 +334,7 @@
         headers: {
           Authorization: "Bearer " + accessToken,
           Accept: "application/json",
-          "User-Agent": "OpenUsage",
+          "User-Agent": "OhMyUsage",
         },
         timeoutMs: 10000,
       })

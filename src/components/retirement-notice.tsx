@@ -64,7 +64,7 @@ export function RetirementNotice() {
       >
         <X />
       </Button>
-      <AlertTitle className="pr-6 text-sm">OpenUsage Has Moved</AlertTitle>
+      <AlertTitle className="pr-6 text-sm">OhMyUsage Has Moved</AlertTitle>
       <AlertDescription className="mt-1 text-xs text-muted-foreground">
         This version is retired and won't receive any updates. Switch to the new
         app by clicking the button below.

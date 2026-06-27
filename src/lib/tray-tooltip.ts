@@ -28,7 +28,7 @@ export function formatTrayTooltip(
   pluginsMeta: PluginMeta[],
   weeklyMode = false
 ): string {
-  const lines = ["OpenUsage"]
+  const lines = ["OhMyUsage"]
   if (bars.length === 0) return lines[0]!
 
   const resolved = bars.filter((bar) => bar.label !== undefined)

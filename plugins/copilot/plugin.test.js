@@ -68,7 +68,7 @@ describe("copilot plugin", () => {
     expect(() => plugin.probe(ctx)).toThrow("Not logged in. Run `gh auth login` first.");
   });
 
-  it("loads token from OpenUsage keychain", async () => {
+  it("loads token from OhMyUsage keychain", async () => {
     const ctx = makePluginTestContext();
     setKeychainToken(ctx, "ghu_keychain");
     mockUsageOk(ctx);
@@ -155,7 +155,7 @@ describe("copilot plugin", () => {
     expect(JSON.parse(stateFile).token).toBe("gho_persist");
   });
 
-  it("does not persist token loaded from OpenUsage keychain", async () => {
+  it("does not persist token loaded from OhMyUsage keychain", async () => {
     const ctx = makePluginTestContext();
     setKeychainToken(ctx, "ghu_already");
     mockUsageOk(ctx);
@@ -494,7 +494,7 @@ describe("copilot plugin", () => {
     expect(() => plugin.probe(ctx)).toThrow("Token invalid");
   });
 
-  it("falls back when OpenUsage keychain payload lacks token field", async () => {
+  it("falls back when OhMyUsage keychain payload lacks token field", async () => {
     const ctx = makePluginTestContext();
     ctx.host.keychain.readGenericPassword.mockImplementation((service) => {
       if (service === "OpenUsage-copilot") return JSON.stringify({ notToken: "x" });
