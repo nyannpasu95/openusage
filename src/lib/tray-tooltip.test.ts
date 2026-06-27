@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { formatTrayPercentText, formatTrayTooltip } from "./tray-tooltip"
+import { formatTrayMetricText, formatTrayPercentText, formatTrayTooltip } from "./tray-tooltip"
 import type { PluginMeta } from "./plugin-types"
 import type { TrayPrimaryBar } from "./tray-primary-progress"
 
@@ -24,6 +24,13 @@ describe("tray-tooltip", () => {
     it("should handle undefined and NaN", () => {
       expect(formatTrayPercentText(undefined)).toBe("--%")
       expect(formatTrayPercentText(NaN)).toBe("--%")
+    })
+  })
+
+  describe("formatTrayMetricText", () => {
+    it("uses display text before percentage text", () => {
+      expect(formatTrayMetricText({ id: "p1", displayText: "¥53.73 CNY" })).toBe("¥53.73 CNY")
+      expect(formatTrayMetricText({ id: "p1", fraction: 0.45 })).toBe("45%")
     })
   })
 
@@ -61,6 +68,14 @@ describe("tray-tooltip", () => {
       ]
       const tooltip = formatTrayTooltip(bars, mockMeta)
       expect(tooltip).toBe("OpenUsage\nPlugin 1: --%")
+    })
+
+    it("uses display text for non-percentage metrics", () => {
+      const bars: TrayPrimaryBar[] = [
+        { id: "p1", displayText: "¥53.73 CNY", label: "Balance" },
+      ]
+      const tooltip = formatTrayTooltip(bars, mockMeta)
+      expect(tooltip).toBe("OpenUsage\nPlugin 1: ¥53.73 CNY")
     })
 
     it("omits tags in weekly mode when every line is weekly", () => {

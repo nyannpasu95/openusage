@@ -506,6 +506,42 @@ describe("App", () => {
     await waitFor(() => expect(state.traySetTitleMock).toHaveBeenCalledWith("--%"))
   })
 
+  it("shows balance amount in the tray title for providers without progress", async () => {
+    state.invokeMock.mockImplementation(async (cmd: string) => {
+      if (cmd === "list_plugins") {
+        return [
+          {
+            id: "deepseek",
+            name: "DeepSeek",
+            iconUrl: "icon-deepseek",
+            primaryCandidates: [],
+            lines: [{ type: "text", label: "Balance", scope: "overview" }],
+          },
+        ]
+      }
+      return null
+    })
+    state.loadPluginSettingsMock.mockResolvedValueOnce({ order: ["deepseek"], disabled: [] })
+
+    render(<App />)
+    await waitFor(() => expect(state.startBatchMock).toHaveBeenCalled())
+
+    state.probeHandlers?.onResult({
+      providerId: "deepseek",
+      displayName: "DeepSeek",
+      iconUrl: "icon-deepseek",
+      lines: [{ type: "text", label: "Balance", value: "¥53.73 CNY" }],
+    })
+
+    await waitFor(() => expect(state.traySetTitleMock).toHaveBeenCalledWith("¥53.73 CNY"))
+    await waitFor(() => {
+      const latestCall = state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0]
+      expect(latestCall).toBeDefined()
+      expect(latestCall!.providerIconUrl).toBe("icon-deepseek")
+      expect(latestCall!.percentText).toBeUndefined()
+    })
+  })
+
   it("bars style path passed to renderTrayBarsIcon when loadMenubarIconStyle returns bars", async () => {
     state.loadMenubarIconStyleMock.mockResolvedValue("bars")
     state.invokeMock.mockImplementation(async (cmd: string) => {

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "deepseek",
+  "name": "DeepSeek",
+  "version": "0.0.1",
+  "entry": "plugin.js",
+  "icon": "icon.svg",
+  "brandColor": "#4D6BFE",
+  "links": [
+    { "label": "Usage", "url": "https://platform.deepseek.com/usage" },
+    { "label": "Billing", "url": "https://platform.deepseek.com/billing" }
+  ],
+  "lines": [
+    { "type": "badge", "label": "Status", "scope": "overview" },
+    { "type": "text", "label": "Balance", "scope": "overview" },
+    { "type": "text", "label": "Granted", "scope": "detail" },
+    { "type": "text", "label": "Topped Up", "scope": "detail" }
+  ]
+}

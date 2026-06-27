@@ -303,6 +303,37 @@ describe("getTrayPrimaryBars", () => {
     expect(bars).toEqual([])
   })
 
+  it("uses balance text for providers without percentage progress", () => {
+    const bars = getTrayPrimaryBars({
+      pluginsMeta: [
+        {
+          id: "deepseek",
+          name: "DeepSeek",
+          iconUrl: "",
+          primaryCandidates: [],
+          lines: [{ type: "text", label: "Balance", scope: "overview" }],
+        },
+      ],
+      pluginSettings: { order: ["deepseek"], disabled: [] },
+      pluginStates: {
+        deepseek: {
+          data: {
+            providerId: "deepseek",
+            displayName: "DeepSeek",
+            iconUrl: "",
+            lines: [{ type: "text", label: "Balance", value: "¥53.73 CNY" }],
+          },
+          loading: false,
+          error: null,
+        },
+      },
+    })
+
+    expect(bars).toEqual([
+      { id: "deepseek", fraction: undefined, displayText: "¥53.73 CNY", label: "Balance" },
+    ])
+  })
+
   it("handles Claude fallback from Session to Weekly to Extra usage spent", () => {
     const pluginsMeta = [
       {

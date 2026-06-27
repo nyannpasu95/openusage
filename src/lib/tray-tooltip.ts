@@ -10,9 +10,14 @@ export function formatTrayPercentText(fraction: number | undefined): string {
   return `${Math.round(clampedFraction * 100)}%`
 }
 
+export function formatTrayMetricText(bar: TrayPrimaryBar | undefined): string {
+  if (bar?.displayText) return bar.displayText
+  return formatTrayPercentText(bar?.fraction)
+}
+
 /**
  * Creates a multi-line tooltip string for the tray icon.
- * Lists the app name followed by enabled plugins and their usage percentages.
+ * Lists the app name followed by enabled plugins and their menubar metrics.
  *
  * In weekly mode, lines are tagged with their metric label only when the list
  * is mixed (at least one provider fell back from weekly). When every provider
@@ -34,11 +39,11 @@ export function formatTrayTooltip(
   for (const bar of bars) {
     const meta = metaById.get(bar.id)
     if (!meta) continue
-    const percent = formatTrayPercentText(bar.fraction)
+    const metric = formatTrayMetricText(bar)
     if (showTags && bar.label) {
-      lines.push(`${meta.name}: ${percent} · ${bar.label}`)
+      lines.push(`${meta.name}: ${metric} · ${bar.label}`)
     } else {
-      lines.push(`${meta.name}: ${percent}`)
+      lines.push(`${meta.name}: ${metric}`)
     }
   }
   return lines.join("\n")

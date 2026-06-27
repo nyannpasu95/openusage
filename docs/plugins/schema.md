@@ -107,6 +107,7 @@ Progress lines opt into the system tray icon by setting `primaryOrder` (a number
 
 Rules:
 - Only `type: "progress"` lines are candidates (`primaryOrder` is ignored on other types)
+- A provider with an overview `type: "text"` line labeled `Balance` can appear in the menubar without a progress candidate; the menubar title and tooltip show that Balance value as text
 - Lower `primaryOrder` wins; the frontend walks the ordered list and uses the first one present in live data
 - Up to 4 enabled plugins are shown in the tray (in plugin order)
 - If no data is available yet, the bar shows as a track without fill

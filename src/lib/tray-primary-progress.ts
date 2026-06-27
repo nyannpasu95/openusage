@@ -12,6 +12,8 @@ type PluginState = {
 export type TrayPrimaryBar = {
   id: string
   fraction?: number
+  /** Text to show when the primary metric is not percentage-based. */
+  displayText?: string
   /** Label of the metric line that produced this bar (when data is available). */
   label?: string
   /** True when the value came from the provider's declared weekly line. */
@@ -25,6 +27,19 @@ type ProgressLine = Extract<
 
 function isProgressLine(line: PluginOutput["lines"][number]): line is ProgressLine {
   return line.type === "progress"
+}
+
+type TextLine = Extract<
+  PluginOutput["lines"][number],
+  { type: "text"; label: string; value: string }
+>
+
+function isTextLine(line: PluginOutput["lines"][number]): line is TextLine {
+  return line.type === "text"
+}
+
+function hasBalanceLine(meta: PluginMeta): boolean {
+  return meta.lines.some((line) => line.type === "text" && line.label === "Balance")
 }
 
 export function getTrayPrimaryBars(args: {
@@ -59,16 +74,19 @@ export function getTrayPrimaryBars(args: {
     const meta = metaById.get(id)
     if (!meta) continue
     
-    // Skip plugins with no primary metric. Weekly mode is an override of the
-    // primary (see preferWeekly below), not a standalone mode — so a provider
-    // must define primaryCandidates to appear in the menubar; a weekly-only
-    // provider is intentionally skipped.
-    if (!meta.primaryCandidates || meta.primaryCandidates.length === 0) continue
+    // Skip plugins with no menubar metric. Weekly mode is an override of the
+    // primary (see preferWeekly below), not a standalone mode. Balance text is
+    // allowed as the non-percentage metric for providers without a usage cap.
+    const supportsBalanceMetric = hasBalanceLine(meta)
+    if ((!meta.primaryCandidates || meta.primaryCandidates.length === 0) && !supportsBalanceMetric) {
+      continue
+    }
 
     const state = pluginStates[id]
     const data = state?.data ?? null
 
     let fraction: number | undefined
+    let displayText: string | undefined
     let label: string | undefined
     let weekly: true | undefined
     if (data) {
@@ -99,13 +117,20 @@ export function getTrayPrimaryBars(args: {
               : metricLine.limit - metricLine.used
           fraction = clamp01(shownAmount / metricLine.limit)
         }
+      } else if (supportsBalanceMetric) {
+        const balanceLine = data.lines.find(
+          (line): line is TextLine => isTextLine(line) && line.label === "Balance"
+        )
+        if (balanceLine) {
+          label = balanceLine.label
+          displayText = balanceLine.value
+        }
       }
     }
 
-    out.push({ id, fraction, label, weekly })
+    out.push({ id, fraction, displayText, label, weekly })
     if (out.length >= maxBars) break
   }
 
   return out
 }
-

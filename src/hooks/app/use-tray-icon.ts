@@ -6,7 +6,7 @@ import type { DisplayMode, MenubarIconStyle, MenubarMetric, PluginSettings } fro
 import { getEnabledPluginIds } from "@/lib/settings"
 import { getTrayIconSizePx, renderTrayBarsIcon } from "@/lib/tray-bars-icon"
 import { getTrayPrimaryBars, type TrayPrimaryBar } from "@/lib/tray-primary-progress"
-import { formatTrayPercentText, formatTrayTooltip } from "@/lib/tray-tooltip"
+import { formatTrayMetricText, formatTrayTooltip } from "@/lib/tray-tooltip"
 import type { PluginState } from "@/hooks/app/types"
 
 type TrayUpdateReason = "probe" | "settings" | "init"
@@ -42,10 +42,12 @@ function isSameTraySettingsPreview(a: TraySettingsPreview, b: TraySettingsPrevie
   for (let i = 0; i < a.bars.length; i += 1) {
     if (a.bars[i]?.id !== b.bars[i]?.id) return false
     if (a.bars[i]?.fraction !== b.bars[i]?.fraction) return false
+    if (a.bars[i]?.displayText !== b.bars[i]?.displayText) return false
   }
   for (let i = 0; i < a.providerBars.length; i += 1) {
     if (a.providerBars[i]?.id !== b.providerBars[i]?.id) return false
     if (a.providerBars[i]?.fraction !== b.providerBars[i]?.fraction) return false
+    if (a.providerBars[i]?.displayText !== b.providerBars[i]?.displayText) return false
   }
   return true
 }
@@ -234,13 +236,14 @@ export function useTrayIcon({
       const providerIconUrl = trayProviderId
         ? pluginsMetaRef.current.find((plugin) => plugin.id === trayProviderId)?.iconUrl
         : undefined
-      const providerPercentText = formatTrayPercentText(providerBars[0]?.fraction)
+      const providerMetricText = formatTrayMetricText(providerBars[0])
+      const providerIconText = providerBars[0]?.displayText ? undefined : providerMetricText
 
       const nextPreview: TraySettingsPreview = {
         bars: barsForPreview,
         providerBars,
         providerIconUrl,
-        providerPercentText,
+        providerPercentText: providerMetricText,
       }
       setTraySettingsPreview((prev) =>
         isSameTraySettingsPreview(prev, nextPreview) ? prev : nextPreview
@@ -310,13 +313,13 @@ export function useTrayIcon({
         bars: providerBars,
         sizePx,
         style: "provider",
-        percentText: supportsNativeTrayTitle ? undefined : providerPercentText,
+        percentText: supportsNativeTrayTitle ? undefined : providerIconText,
         providerIconUrl,
       })
         .then(async (img) => {
           await tray.setIcon(img)
           await tray.setIconAsTemplate(true)
-          await setTrayTitle(providerPercentText)
+          await setTrayTitle(providerMetricText)
           await updateTooltip()
         })
         .catch((e) => {
