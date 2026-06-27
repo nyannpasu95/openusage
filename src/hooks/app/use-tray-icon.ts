@@ -257,7 +257,7 @@ export function useTrayIcon({
         displayMode: displayModeRef.current,
         preferWeekly,
       })
-      const tooltip = formatTrayTooltip(tooltipBars, pluginsMetaRef.current, preferWeekly)
+      const tooltip = formatTrayTooltip(tooltipBars, pluginsMetaRef.current, preferWeekly, displayModeRef.current)
       const updateTooltip = () => setTrayTooltip(tooltip)
 
       if (style === "bars") {

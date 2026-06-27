@@ -21,19 +21,18 @@ export function OverviewPage({
   onResetTimerDisplayModeToggle,
 }: OverviewPageProps) {
   return (
-    <div>
+    <div className="space-y-2 py-1">
       <RetirementNotice />
       {plugins.length === 0 ? (
         <div className="text-center text-muted-foreground py-8">
           No providers enabled
         </div>
       ) : (
-        plugins.map((plugin, index) => (
+        plugins.map((plugin) => (
           <ProviderCard
             key={plugin.meta.id}
             name={plugin.meta.name}
             plan={plugin.data?.plan}
-            showSeparator={index < plugins.length - 1}
             loading={plugin.loading}
             error={plugin.error}
             lines={plugin.data?.lines ?? []}

@@ -860,7 +860,7 @@ describe("App", () => {
     // and every line gets a metric tag.
     await waitFor(() =>
       expect(state.traySetTooltipMock).toHaveBeenCalledWith(
-        "OhMyUsage\nClaude: 42% · Weekly\nCursor: 55% · Credits"
+        "OhMyUsage\nClaude: 42% used · Weekly\nCursor: 55% used · Credits"
       )
     )
   })

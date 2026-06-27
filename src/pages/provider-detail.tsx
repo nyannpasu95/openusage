@@ -32,7 +32,6 @@ export function ProviderDetailPage({
       name={plugin.meta.name}
       plan={plugin.data?.plan}
       links={plugin.meta.links}
-      showSeparator={false}
       loading={plugin.loading}
       error={plugin.error}
       lines={plugin.data?.lines ?? []}

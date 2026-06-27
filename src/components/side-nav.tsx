@@ -1,6 +1,5 @@
 import { useCallback } from "react"
-import { CircleHelp, Settings } from "lucide-react"
-import { openUrl } from "@tauri-apps/plugin-opener"
+import { Settings } from "lucide-react"
 import { invoke } from "@tauri-apps/api/core"
 import { Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu"
 import {
@@ -66,10 +65,10 @@ function NavButton({ isActive, onClick, onContextMenu, children, "aria-label": a
       onContextMenu={onContextMenu}
       aria-label={ariaLabel}
       className={cn(
-        "relative flex items-center justify-center w-full p-2.5 transition-colors",
+        "relative flex items-center justify-center p-2.5 mx-1.5 w-[calc(100%-0.75rem)] rounded-md transition-colors",
         "hover:bg-accent",
         isActive
-          ? "text-foreground before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:bg-primary dark:before:bg-page-accent before:rounded-full"
+          ? "bg-accent text-foreground"
           : "text-muted-foreground"
       )}
     >
@@ -249,18 +248,6 @@ export function SideNav({
           </SortableContext>
         </DndContext>
       </div>
-
-      {/* Help */}
-      <NavButton
-        isActive={false}
-        onClick={() => {
-          openUrl("https://github.com/robinebers/openusage/issues").catch(console.error)
-          invoke("hide_panel").catch(console.error)
-        }}
-        aria-label="Help"
-      >
-        <CircleHelp className="size-6" />
-      </NavButton>
 
       {/* Settings */}
       <NavButton

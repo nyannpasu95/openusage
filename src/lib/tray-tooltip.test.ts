@@ -44,13 +44,22 @@ describe("tray-tooltip", () => {
       expect(formatTrayTooltip([], mockMeta)).toBe("OhMyUsage")
     })
 
-    it("should list enabled plugins with percentages", () => {
+    it("should list enabled plugins with percentages (default left mode)", () => {
       const bars: TrayPrimaryBar[] = [
         { id: "p1", fraction: 0.45 },
         { id: "p2", fraction: 0.12 },
       ]
       const tooltip = formatTrayTooltip(bars, mockMeta)
-      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 45%\nPlugin 2: 12%")
+      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 45% left\nPlugin 2: 12% left")
+    })
+
+    it("suffixes percentages with 'used' in used mode", () => {
+      const bars: TrayPrimaryBar[] = [
+        { id: "p1", fraction: 0.45 },
+        { id: "p2", fraction: 0.12 },
+      ]
+      const tooltip = formatTrayTooltip(bars, mockMeta, false, "used")
+      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 45% used\nPlugin 2: 12% used")
     })
 
     it("should handle missing plugin metadata gracefully", () => {
@@ -59,10 +68,10 @@ describe("tray-tooltip", () => {
         { id: "unknown", fraction: 0.5 },
       ]
       const tooltip = formatTrayTooltip(bars, mockMeta)
-      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 45%")
+      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 45% left")
     })
 
-    it("should show --% for missing fractions", () => {
+    it("should show a bare --% for missing fractions", () => {
       const bars: TrayPrimaryBar[] = [
         { id: "p1", fraction: undefined },
       ]
@@ -70,7 +79,7 @@ describe("tray-tooltip", () => {
       expect(tooltip).toBe("OhMyUsage\nPlugin 1: --%")
     })
 
-    it("uses display text for non-percentage metrics", () => {
+    it("uses bare display text for non-percentage metrics", () => {
       const bars: TrayPrimaryBar[] = [
         { id: "p1", displayText: "¥53.73 CNY", label: "Balance" },
       ]
@@ -84,7 +93,7 @@ describe("tray-tooltip", () => {
         { id: "p2", fraction: 0.6, label: "Weekly", weekly: true },
       ]
       const tooltip = formatTrayTooltip(bars, mockMeta, true)
-      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 42%\nPlugin 2: 60%")
+      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 42% left\nPlugin 2: 60% left")
     })
 
     it("tags every line in weekly mode when the list is mixed", () => {
@@ -93,7 +102,7 @@ describe("tray-tooltip", () => {
         { id: "p2", fraction: 0.3, label: "Premium" },
       ]
       const tooltip = formatTrayTooltip(bars, mockMeta, true)
-      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 42% · Weekly\nPlugin 2: 30% · Premium")
+      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 42% left · Weekly\nPlugin 2: 30% left · Premium")
     })
 
     it("does not tag lines when weekly mode is off", () => {
@@ -102,7 +111,7 @@ describe("tray-tooltip", () => {
         { id: "p2", fraction: 0.3, label: "Premium" },
       ]
       const tooltip = formatTrayTooltip(bars, mockMeta, false)
-      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 42%\nPlugin 2: 30%")
+      expect(tooltip).toBe("OhMyUsage\nPlugin 1: 42% left\nPlugin 2: 30% left")
     })
   })
 })

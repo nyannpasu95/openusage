@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import type { ReactNode } from "react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -736,18 +736,6 @@ describe("ProviderCard", () => {
     vi.useRealTimers()
   })
 
-  it("omits separator when disabled", () => {
-    const { container } = render(
-      <ProviderCard
-        name="NoSep"
-        displayMode="used"
-        showSeparator={false}
-        lines={[{ type: "text", label: "Label", value: "Value" }]}
-      />
-    )
-    expect(within(container).queryAllByRole("separator")).toHaveLength(0)
-  })
-
   it("filters lines by scope=overview", () => {
     render(
       <ProviderCard
@@ -962,6 +950,105 @@ describe("ProviderCard", () => {
       />
     )
     expect(screen.queryByText(/Updated/)).toBeNull()
+  })
+
+  it("ramps the meter color from healthy to amber to red as usage approaches the limit", () => {
+    // Healthy (below the amber threshold) and no brand color → no inline fill,
+    // so the meter shows the theme default.
+    const { container, rerender } = render(
+      <ProviderCard
+        name="Meter"
+        displayMode="used"
+        lines={[{ type: "progress", label: "Usage", used: 50, limit: 100, format: { kind: "percent" } }]}
+      />
+    )
+    let bar = container.querySelector('[role="progressbar"] > div') as HTMLElement
+    expect(bar.style.backgroundColor).toBe("")
+
+    // At/above the amber threshold (75%) → amber.
+    rerender(
+      <ProviderCard
+        name="Meter"
+        displayMode="used"
+        lines={[{ type: "progress", label: "Usage", used: 80, limit: 100, format: { kind: "percent" } }]}
+      />
+    )
+    bar = container.querySelector('[role="progressbar"] > div') as HTMLElement
+    expect(bar.style.backgroundColor).toBe("var(--yellow-500)")
+
+    // At/above the red threshold (90%) → red.
+    rerender(
+      <ProviderCard
+        name="Meter"
+        displayMode="used"
+        lines={[{ type: "progress", label: "Usage", used: 95, limit: 100, format: { kind: "percent" } }]}
+      />
+    )
+    bar = container.querySelector('[role="progressbar"] > div') as HTMLElement
+    expect(bar.style.backgroundColor).toBe("var(--red-500)")
+  })
+
+  it("bases the meter color on usage, not the displayed amount, in 'left' mode", () => {
+    // 10% used (90% left): the bar shows 90% remaining, but the health color
+    // must read the 10% consumption → healthy, no warning fill.
+    const { container, rerender } = render(
+      <ProviderCard
+        name="Meter"
+        displayMode="left"
+        lines={[{ type: "progress", label: "Usage", used: 10, limit: 100, format: { kind: "percent" } }]}
+      />
+    )
+    let bar = container.querySelector('[role="progressbar"] > div') as HTMLElement
+    expect(bar.style.backgroundColor).toBe("")
+
+    // 95% used (5% left): nearly exhausted → red, even though the bar is short.
+    rerender(
+      <ProviderCard
+        name="Meter"
+        displayMode="left"
+        lines={[{ type: "progress", label: "Usage", used: 95, limit: 100, format: { kind: "percent" } }]}
+      />
+    )
+    bar = container.querySelector('[role="progressbar"] > div') as HTMLElement
+    expect(bar.style.backgroundColor).toBe("var(--red-500)")
+  })
+
+  it("keeps the provider brand color while healthy but overrides with red near the limit", () => {
+    // Healthy → brand color wins.
+    const { container, rerender } = render(
+      <ProviderCard
+        name="Branded"
+        displayMode="used"
+        lines={[{ type: "progress", label: "Usage", used: 50, limit: 100, format: { kind: "percent" }, color: "#ff6b00" }]}
+      />
+    )
+    let bar = container.querySelector('[role="progressbar"] > div') as HTMLElement
+    expect(bar.style.backgroundColor).toBe("rgb(255, 107, 0)")
+
+    // Critical → the red health color overrides the brand color.
+    rerender(
+      <ProviderCard
+        name="Branded"
+        displayMode="used"
+        lines={[{ type: "progress", label: "Usage", used: 95, limit: 100, format: { kind: "percent" }, color: "#ff6b00" }]}
+      />
+    )
+    bar = container.querySelector('[role="progressbar"] > div') as HTMLElement
+    expect(bar.style.backgroundColor).toBe("var(--red-500)")
+  })
+
+  it("renders an Unlimited state and no progress bar when limit is 0", () => {
+    const { container } = render(
+      <ProviderCard
+        name="Uncapped"
+        displayMode="used"
+        lines={[{ type: "progress", label: "Spend", used: 12.5, limit: 0, format: { kind: "dollars" } }]}
+      />
+    )
+    expect(screen.getByText("$12.50")).toBeInTheDocument()
+    expect(screen.getByText("Unlimited")).toBeInTheDocument()
+    // No meter drawn for the unlimited case
+    expect(container.querySelector('[role="progressbar"]')).toBeNull()
   })
 })
 
