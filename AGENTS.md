@@ -97,7 +97,7 @@ When you write the summary at the end, skip the technical jargon. Write like you
 ## Before Creating Pull Request
 
 - Before creating a PR or pushing to main, ensure that `README.md` is updated with what plugins are supported.
-- On any plugin change/new plugin, audit plugin-exposed request/response fields against `src-tauri/src/plugin_engine/host_api.rs` redaction lists and add/update tests for gaps. Compare with existing plugins for patterns.
+- On any plugin change/new plugin, audit plugin-exposed request/response fields against `src-tauri/src/plugin_engine/host_api/redact.rs` redaction lists and add/update tests for gaps. Compare with existing plugins for patterns.
 - In `plugin.json`, set `brandColor` to the provider's real brand color.
 - Plugin SVG logos must use `currentColor` so icon theming works correctly.
 - If the PR includes visual changes, refuse to create it without providing before/after screenshots.

@@ -29,7 +29,7 @@ static RESOLVED_PROXY: OnceLock<Option<ResolvedProxy>> = OnceLock::new();
 /// Returns the resolved proxy, or None if disabled/invalid/missing.
 /// Loaded once from disk on first call; subsequent calls are zero-cost.
 pub fn get_resolved_proxy() -> Option<&'static ResolvedProxy> {
-    RESOLVED_PROXY.get_or_init(|| load_and_resolve_proxy()).as_ref()
+    RESOLVED_PROXY.get_or_init(load_and_resolve_proxy).as_ref()
 }
 
 /// Config file path: ~/.openusage/config.json

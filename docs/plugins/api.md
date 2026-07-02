@@ -153,7 +153,7 @@ Reads an environment variable by name.
 
 - Returns variable value as string when set
 - Returns `null` when missing
-- Variable must be whitelisted first in `src-tauri/src/plugin_engine/host_api.rs`
+- Variable must be whitelisted first in `src-tauri/src/plugin_engine/host_api/env.rs`
 - Resolution order: current process env first, then a login+interactive shell lookup (macOS)
 - Values may be cached for the app session; restart OhMyUsage after changing shell config
 

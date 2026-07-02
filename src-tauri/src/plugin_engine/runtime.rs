@@ -2,7 +2,7 @@ use crate::plugin_engine::host_api;
 use crate::plugin_engine::manifest::LoadedPlugin;
 use rquickjs::{Array, Context, Ctx, Error, Object, Promise, Runtime, Value};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::Path;
 use std::time::{Duration, Instant};
 
 const PROBE_TIMEOUT_SECS: u64 = 30;
@@ -69,7 +69,7 @@ pub struct PluginOutput {
     pub icon_url: String,
 }
 
-pub fn run_probe(plugin: &LoadedPlugin, app_data_dir: &PathBuf, app_version: &str) -> PluginOutput {
+pub fn run_probe(plugin: &LoadedPlugin, app_data_dir: &Path, app_version: &str) -> PluginOutput {
     run_probe_with_timeout(
         plugin,
         app_data_dir,
@@ -80,7 +80,7 @@ pub fn run_probe(plugin: &LoadedPlugin, app_data_dir: &PathBuf, app_version: &st
 
 fn run_probe_with_timeout(
     plugin: &LoadedPlugin,
-    app_data_dir: &PathBuf,
+    app_data_dir: &Path,
     app_version: &str,
     timeout: Duration,
 ) -> PluginOutput {
@@ -106,7 +106,7 @@ fn run_probe_with_timeout(
     let display_name = plugin.manifest.name.clone();
     let entry_script = plugin.entry_script.clone();
     let icon_url = plugin.icon_data_url.clone();
-    let app_data = app_data_dir.clone();
+    let app_data = app_data_dir.to_path_buf();
 
     ctx.with(|ctx| {
         if host_api::inject_host_api_with_deadline(
@@ -419,7 +419,7 @@ fn parse_lines(result: &Object) -> Result<Vec<MetricLine>, String> {
                                     // ISO-like but missing timezone: assume UTC.
                                     let is_missing_tz =
                                         value.contains('T') && !value.ends_with('Z') && {
-                                            let tail = value.splitn(2, 'T').nth(1).unwrap_or("");
+                                            let tail = value.split_once('T').map(|x| x.1).unwrap_or("");
                                             !tail.contains('+') && !tail.contains('-')
                                         };
                                     if is_missing_tz {

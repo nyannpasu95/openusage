@@ -1,3 +1,7 @@
+// panel_event! requires an explicit `-> ()` in its grammar, which trips
+// clippy::unused_unit; the lint can't be scoped to the macro invocation.
+#![allow(clippy::unused_unit)]
+
 use tauri::{AppHandle, Manager, Position, Size};
 use tauri_nspanel::{
     CollectionBehavior, ManagerExt, PanelLevel, StyleMask, WebviewWindowExt, tauri_panel,

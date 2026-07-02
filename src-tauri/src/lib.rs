@@ -599,9 +599,9 @@ pub fn run() {
             {
                 use tauri_plugin_store::StoreExt;
 
-                if let Ok(store) = app.handle().store("settings.json") {
-                    if let Some(shortcut_value) = store.get(GLOBAL_SHORTCUT_STORE_KEY) {
-                        if let Some(shortcut) = shortcut_value.as_str() {
+                if let Ok(store) = app.handle().store("settings.json")
+                    && let Some(shortcut_value) = store.get(GLOBAL_SHORTCUT_STORE_KEY)
+                        && let Some(shortcut) = shortcut_value.as_str() {
                             let shortcut = shortcut.trim();
                             if !shortcut.is_empty() {
                                 let handle = app.handle().clone();
@@ -622,8 +622,6 @@ pub fn run() {
                                 }
                             }
                         }
-                    }
-                }
             }
 
             Ok(())
