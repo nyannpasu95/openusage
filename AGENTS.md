@@ -53,7 +53,7 @@ Always fail loudly into error logging (e.g., Sentry) and but show friendly error
 
 Always use titlecase any hardcoded copy for titles.
 
-Strictly use `@hugeicons-pro/core-solid-rounded`. Nothing else. If you come across `lucide-react` or similar, replace it. Pattern: `<HugeiconsIcon icon={FooIcon} className="size-4" />`. Never pass `strokeWidth` (paints an unwanted outline on filled glyphs).
+Strictly use `lucide-react` for icons. Nothing else. Pattern: `<FooIcon className="size-4" />`. (Upstream mandates `@hugeicons-pro/core-solid-rounded`, but that package requires a paid license token to install; this fork standardizes on lucide-react instead.)
 
 ## Automated Testing
 

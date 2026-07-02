@@ -38,12 +38,14 @@ OhMyUsage lives in your menu bar and shows you how much of your AI coding subscr
 - [**Kimi Code**](docs/providers/kimi.md) / session, weekly
 - [**MiniMax**](docs/providers/minimax.md) / coding plan session
 - [**OpenCode Go**](docs/providers/opencode-go.md) / 5h, weekly, monthly spend limits
+- [**Perplexity**](docs/providers/perplexity.md) / queries, deep research, labs, API credits
 - [**Devin**](docs/providers/devin.md) / weekly quota, extra usage
+- [**Synthetic**](docs/providers/synthetic.md) / rate limits, subscription, tool calls, search
 - [**Z.ai**](docs/providers/zai.md) / session, weekly, web searches
 
 Community contributions welcome.
 
-Want a provider that's not listed? [Open an issue.](https://github.com/robinebers/openusage/issues/new)
+Want a provider that's not listed? [Open an issue.](https://github.com/nyannpasu95/openusage/issues/new)
 
 ## Open Source, Community Driven
 
@@ -65,7 +67,7 @@ Plugins are currently bundled as we build our the API, but soon will be made fle
 
 - **Add a provider.** Each one is just a plugin. See the [Plugin API](docs/plugins/api.md).
 - **Fix a bug.** PRs welcome. Provide before/after screenshots.
-- **Request a feature.** [Open an issue](https://github.com/robinebers/openusage/issues/new) and make your case.
+- **Request a feature.** [Open an issue](https://github.com/nyannpasu95/openusage/issues/new) and make your case.
 
 Keep it simple. No feature creep, no AI-generated commit messages, test your changes.
 
