@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.6.29
+
+First OhMyUsage release of this fork, continuing the Tauri edition.
+
+### New Features
+- feat: add DeepSeek plugin for account balance tracking and update tray display logic
+- feat: usage meter colors shift with usage thresholds; tray tooltip includes usage context (left/used)
+
+### Bug Fixes
+- fix: point auto-updater, in-app changelog, and repo links at this fork instead of upstream
+- fix: remove the "OpenUsage Has Moved" retirement banner from the overview
+
+### Refactor
+- refactor: streamline ProviderCard and extract metric line component
+- refactor: split plugin engine host_api.rs into focused submodules
+- chore: rename OpenUsage to OhMyUsage throughout the codebase
+- chore: resolve all clippy warnings in the Rust backend
+
+---
+
 ## v0.6.28
 
 ### New Features

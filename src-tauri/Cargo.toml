@@ -1,6 +1,6 @@
 [package]
 name = "ohmyusage"
-version = "0.6.28"
+version = "0.6.29"
 description = "OhMyUsage is an open source AI subscription limit tracker"
 authors = ["Robin Ebers"]
 edition = "2024"
