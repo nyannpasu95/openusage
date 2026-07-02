@@ -6,9 +6,11 @@ See your usage at a glance from your menu bar. No digging through dashboards.
 
 ## Download
 
-[**Download the latest release**](https://github.com/robinebers/openusage/releases/latest) (macOS, Apple Silicon & Intel)
+[**Download the latest release**](https://github.com/nyannpasu95/openusage/releases/latest) (macOS, Apple Silicon & Intel)
 
 The app auto-updates. Install once and you're set.
+
+> **First launch:** builds are not notarized by Apple, so macOS will block the app with a malware warning. To open it, run `xattr -d com.apple.quarantine /Applications/OhMyUsage.app` in Terminal, or go to System Settings → Privacy & Security and click "Open Anyway" after the first blocked attempt.
 
 ## What It Does
 
