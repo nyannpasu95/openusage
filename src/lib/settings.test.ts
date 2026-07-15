@@ -183,6 +183,31 @@ describe("settings", () => {
     await expect(loadAutoUpdateInterval()).resolves.toBe(5)
   })
 
+  it("accepts all new auto-update intervals", async () => {
+    for (const interval of [1, 2, 10, 120] as const) {
+      await saveAutoUpdateInterval(interval)
+      await expect(loadAutoUpdateInterval()).resolves.toBe(interval)
+    }
+  })
+
+  it("falls back to default for invalid auto-update interval", async () => {
+    storeState.set("autoUpdateInterval", 3)
+    await expect(loadAutoUpdateInterval()).resolves.toBe(DEFAULT_AUTO_UPDATE_INTERVAL)
+  })
+
+  it("renders hour labels for 60 and 120 minute intervals", async () => {
+    const { AUTO_UPDATE_OPTIONS } = await import("@/lib/settings")
+    const byValue = Object.fromEntries(AUTO_UPDATE_OPTIONS.map((o) => [o.value, o.label]))
+    expect(byValue[1]).toBe("1 min")
+    expect(byValue[2]).toBe("2 min")
+    expect(byValue[5]).toBe("5 min")
+    expect(byValue[10]).toBe("10 min")
+    expect(byValue[15]).toBe("15 min")
+    expect(byValue[30]).toBe("30 min")
+    expect(byValue[60]).toBe("1 hour")
+    expect(byValue[120]).toBe("2 hours")
+  })
+
   it("loads default theme mode when missing", async () => {
     await expect(loadThemeMode()).resolves.toBe(DEFAULT_THEME_MODE)
   })

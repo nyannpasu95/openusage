@@ -55,13 +55,13 @@ OhMyUsage is built by its users. Hundreds of people use it daily, and the projec
 
 I maintain the project as a guide and quality gatekeeper, but this is your app as much as mine. If something is missing or broken, the best way to get it fixed is to contribute by opening an issue, or submitting a PR.
 
-Plugins are currently bundled as we build our the API, but soon will be made flexible so you can build and load their own.
+Plugins are currently bundled as we build out the API, but soon will be made flexible so you can build and load your own.
 
-<a href="https://www.star-history.com/?repos=robinebers%2Fopenusage&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=nyannpasu95%2Fopenusage&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=robinebers/openusage&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=robinebers/openusage&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=robinebers/openusage&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nyannpasu95/openusage&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=nyannpasu95/openusage&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=nyannpasu95/openusage&type=date&legend=top-left" />
  </picture>
 </a>
 
@@ -73,23 +73,9 @@ Plugins are currently bundled as we build our the API, but soon will be made fle
 
 Keep it simple. No feature creep, no AI-generated commit messages, test your changes.
 
-## Built Entirely with AI
-
-Not a single line of code in this project was read or written by hand. 100% AI-generated, AI-reviewed, AI-shipped — using [Cursor](https://cursor.com), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), and [Codex CLI](https://github.com/openai/codex).
-
-OhMyUsage is a real-world example of what I teach in the [AI Builder's Blueprint](https://itsbyrob.in/EBDqgJ6) — a proven process for building and shipping software with AI, no coding background required.
-
-## Sponsors
-
-OhMyUsage is supported by our sponsors. Become a sponsor to get your logo here and on [openusage.ai](https://openusage.ai).
-
-[Become a Sponsor](https://github.com/sponsors/robinebers)
-
-<!-- Add sponsor logos here -->
-
 ## Credits
 
-Inspired by [CodexBar](https://github.com/steipete/CodexBar) by [@steipete](https://github.com/steipete). Same idea, very different approach.
+OhMyUsage is a community fork of [OpenUsage](https://github.com/robinebers/openusage) by [@robinebers](https://github.com/robinebers), inspired by [CodexBar](https://github.com/steipete/CodexBar) by [@steipete](https://github.com/steipete). Same idea, independent maintenance.
 
 ## License
 
@@ -100,8 +86,36 @@ Inspired by [CodexBar](https://github.com/steipete/CodexBar) by [@steipete](http
 <details>
 <summary><strong>Build from source</strong></summary>
 
-> **Warning**: The `main` branch may not be stable. It is merged directly without staging, so users are advised to use tagged versions for stable builds. Tagged versions are fully tested while `main` may contain unreleased features.
+> **Warning**: The `tikuwa` branch is the active development branch and may not be stable. Users are advised to use tagged versions for stable builds. Tagged versions are fully tested while `tikuwa` may contain unreleased features.
 
 ### Stack
 
-...
+- **Frontend:** React + TypeScript, Vite, Tailwind CSS, Zustand
+- **Backend:** Rust, Tauri v2
+- **Plugins:** JavaScript (QuickJS sandbox), one folder per provider under `plugins/`
+- **Package manager:** [Bun](https://bun.sh)
+
+### Prerequisites
+
+- macOS (Apple Silicon or Intel)
+- [Bun](https://bun.sh) (latest)
+- [Rust](https://rustup.rs) stable toolchain
+- Xcode Command Line Tools (`xcode-select --install`)
+
+### Build & run
+
+```bash
+bun install          # install dependencies
+bun tauri dev        # run the app in development
+bun tauri build      # produce a release build (DMG + .app)
+```
+
+Plugin sources live under `plugins/` and are copied into `src-tauri/resources/bundled_plugins/` automatically by the `beforeDevCommand` / `beforeBuildCommand` hooks.
+
+To run the test suites:
+
+```bash
+bun run test         # frontend + plugin tests (Vitest)
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust tests
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+```

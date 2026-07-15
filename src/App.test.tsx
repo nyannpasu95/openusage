@@ -699,20 +699,6 @@ describe("App", () => {
     await waitFor(() => expect(state.traySetTitleMock).toHaveBeenCalledWith("70%"))
   })
 
-  it("covers about open/close callbacks", async () => {
-    render(<App />)
-
-    // Open about via version button in footer
-    await userEvent.click(await screen.findByRole("button", { name: /OhMyUsage/i }))
-    await screen.findByText("Built by")
-
-    // Close about via ESC key
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
-    await waitFor(() => {
-      expect(screen.queryByText("Built by")).not.toBeInTheDocument()
-    })
-  })
-
   it("updates display mode in settings", async () => {
     render(<App />)
     const settingsButtons = await screen.findAllByRole("button", { name: "Settings" })

@@ -4,7 +4,6 @@ import { PanelFooter } from "@/components/panel-footer"
 import { SideNav, type NavPlugin, type PluginContextAction } from "@/components/side-nav"
 import type { DisplayPluginState } from "@/hooks/app/use-app-plugin-views"
 import type { SettingsPluginState } from "@/hooks/app/use-settings-plugin-list"
-import { useAppVersion } from "@/hooks/app/use-app-version"
 import { usePanel } from "@/hooks/app/use-panel"
 import { useAppUpdate } from "@/hooks/use-app-update"
 import { useAppUiStore } from "@/stores/app-ui-store"
@@ -17,6 +16,9 @@ type AppShellProps = {
   displayPlugins: DisplayPluginState[]
   settingsPlugins: SettingsPluginState[]
   autoUpdateNextAt: number | null
+  isRefreshing: boolean
+  refreshCooldownEndsAt: number | null
+  lastUpdatedAt: number | null
   selectedPlugin: DisplayPluginState | null
   onPluginContextAction: (pluginId: string, action: PluginContextAction) => void
   isPluginRefreshAvailable: (pluginId: string) => boolean
@@ -30,6 +32,9 @@ export function AppShell({
   displayPlugins,
   settingsPlugins,
   autoUpdateNextAt,
+  isRefreshing,
+  refreshCooldownEndsAt,
+  lastUpdatedAt,
   selectedPlugin,
   onPluginContextAction,
   isPluginRefreshAvailable,
@@ -63,7 +68,6 @@ export function AppShell({
     displayPlugins,
   })
 
-  const appVersion = useAppVersion()
   const { updateStatus, triggerInstall, checkForUpdates } = useAppUpdate()
 
   return (
@@ -101,15 +105,14 @@ export function AppShell({
               />
             </div>
             <PanelFooter
-              version={appVersion}
               autoUpdateNextAt={autoUpdateNextAt}
               updateStatus={updateStatus}
               onUpdateInstall={triggerInstall}
               onUpdateCheck={checkForUpdates}
               onRefreshAll={onRefreshAll}
-              showAbout={showAbout}
-              onShowAbout={() => setShowAbout(true)}
-              onCloseAbout={() => setShowAbout(false)}
+              isRefreshing={isRefreshing}
+              refreshCooldownEndsAt={refreshCooldownEndsAt}
+              lastUpdatedAt={lastUpdatedAt}
             />
           </div>
         </div>

@@ -1,6 +1,5 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { PanelFooter } from "@/components/panel-footer"
 import type { UpdateStatus } from "@/hooks/use-app-update"
@@ -11,7 +10,7 @@ vi.mock("@tauri-apps/plugin-opener", () => ({
 
 const idle: UpdateStatus = { status: "idle" }
 const noop = () => {}
-const footerProps = { showAbout: false, onShowAbout: noop, onCloseAbout: noop, onUpdateCheck: noop }
+const footerProps = { onUpdateCheck: noop }
 
 describe("PanelFooter", () => {
   it("shows countdown in minutes when >= 60 seconds", () => {
@@ -164,29 +163,113 @@ describe("PanelFooter", () => {
     expect(screen.getByText("Installing...")).toBeTruthy()
   })
 
-  it("opens About dialog when clicking version in idle state", async () => {
-    function Harness() {
-      const [showAbout, setShowAbout] = useState(false)
-      return (
-        <PanelFooter
-          version="0.0.0"
-          autoUpdateNextAt={null}
-          updateStatus={idle}
-          onUpdateInstall={noop}
-          showAbout={showAbout}
-          onShowAbout={() => setShowAbout(true)}
-          onCloseAbout={() => setShowAbout(false)}
-          onUpdateCheck={noop}
-        />
-      )
-    }
+  it("omits the version/name display in idle state", () => {
+    const { container } = render(
+      <PanelFooter
+        version="0.0.0"
+        autoUpdateNextAt={null}
+        updateStatus={idle}
+        onUpdateInstall={noop}
+        {...footerProps}
+      />
+    )
+    expect(container.textContent).not.toContain("OhMyUsage 0.0.0")
+    expect(container.textContent).not.toContain("0.0.0")
+  })
 
-    render(<Harness />)
-    await userEvent.click(screen.getByRole("button", { name: /OhMyUsage/ }))
-    expect(screen.getByText("Open source on")).toBeInTheDocument()
+  it("renders a dedicated refresh button that triggers onRefreshAll", async () => {
+    const onRefreshAll = vi.fn()
+    render(
+      <PanelFooter
+        version="0.0.0"
+        autoUpdateNextAt={null}
+        updateStatus={idle}
+        onUpdateInstall={noop}
+        onRefreshAll={onRefreshAll}
+        {...footerProps}
+      />
+    )
+    const refreshButton = screen.getByRole("button", { name: "Refresh Now" })
+    await userEvent.click(refreshButton)
+    expect(onRefreshAll).toHaveBeenCalledTimes(1)
+  })
 
-    // Close via Escape to exercise AboutDialog onClose path.
-    await userEvent.keyboard("{Escape}")
-    expect(screen.queryByText("Open source on")).not.toBeInTheDocument()
+  it("spins and disables the refresh button while refreshing", () => {
+    render(
+      <PanelFooter
+        version="0.0.0"
+        autoUpdateNextAt={null}
+        updateStatus={idle}
+        onUpdateInstall={noop}
+        onRefreshAll={noop}
+        isRefreshing
+        {...footerProps}
+      />
+    )
+    const button = screen.getByRole("button", { name: "Refresh Now" })
+    expect(button).toBeDisabled()
+    expect(button.querySelector(".animate-spin")).toBeTruthy()
+  })
+
+  it("disables the refresh button and shows hourglass while on cooldown", () => {
+    const cooldownEndsAt = Date.now() + 4 * 60 * 1000 // 4 minutes left
+    render(
+      <PanelFooter
+        version="0.0.0"
+        autoUpdateNextAt={null}
+        updateStatus={idle}
+        onUpdateInstall={noop}
+        onRefreshAll={noop}
+        refreshCooldownEndsAt={cooldownEndsAt}
+        {...footerProps}
+      />
+    )
+    const button = screen.getByRole("button", { name: "Refresh Now" })
+    expect(button).toBeDisabled()
+    expect(button.getAttribute("title")).toContain("Refresh again in")
+    expect(button.querySelector(".animate-spin")).toBeNull()
+  })
+
+  it("shows unified 'Updated Xm ago' label from lastUpdatedAt", () => {
+    const lastUpdatedAt = Date.now() - 3 * 60_000 // 3 minutes ago
+    render(
+      <PanelFooter
+        version="0.0.0"
+        autoUpdateNextAt={null}
+        updateStatus={idle}
+        onUpdateInstall={noop}
+        lastUpdatedAt={lastUpdatedAt}
+        {...footerProps}
+      />
+    )
+    expect(screen.getByText("Updated 3m ago")).toBeInTheDocument()
+  })
+
+  it("shows 'Updated Xs ago' for sub-minute timestamps", () => {
+    const lastUpdatedAt = Date.now() - 5_000 // 5 seconds ago
+    render(
+      <PanelFooter
+        version="0.0.0"
+        autoUpdateNextAt={null}
+        updateStatus={idle}
+        onUpdateInstall={noop}
+        lastUpdatedAt={lastUpdatedAt}
+        {...footerProps}
+      />
+    )
+    expect(screen.getByText("Updated 5s ago")).toBeInTheDocument()
+  })
+
+  it("omits the 'Updated' label when lastUpdatedAt is null", () => {
+    render(
+      <PanelFooter
+        version="0.0.0"
+        autoUpdateNextAt={null}
+        updateStatus={idle}
+        onUpdateInstall={noop}
+        {...footerProps}
+      />
+    )
+    expect(screen.queryByText(/Updated/)).toBeNull()
   })
 })

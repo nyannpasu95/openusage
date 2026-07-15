@@ -66,6 +66,27 @@ pub(crate) fn keychain_add_generic_password_args_for_account(
     ]
 }
 
+pub(crate) fn keychain_delete_generic_password_args(service: &str) -> Vec<OsString> {
+    vec![
+        OsString::from("delete-generic-password"),
+        OsString::from("-s"),
+        OsString::from(service),
+    ]
+}
+
+pub(crate) fn keychain_delete_generic_password_args_for_account(
+    service: &str,
+    account: &str,
+) -> Vec<OsString> {
+    vec![
+        OsString::from("delete-generic-password"),
+        OsString::from("-a"),
+        OsString::from(account),
+        OsString::from("-s"),
+        OsString::from(service),
+    ]
+}
+
 
 pub(crate) fn inject_keychain<'js>(
     ctx: &Ctx<'js>,
@@ -362,6 +383,129 @@ pub(crate) fn inject_keychain<'js>(
         )?,
     )?;
 
+    let pid_delete = plugin_id.to_string();
+    keychain_obj.set(
+        "deleteGenericPassword",
+        Function::new(
+            ctx.clone(),
+            move |ctx_inner: Ctx<'_>,
+                  service: String,
+                  account_args: Rest<Option<String>>|
+                  -> rquickjs::Result<()> {
+                if !cfg!(target_os = "macos") {
+                    return Err(Exception::throw_message(
+                        &ctx_inner,
+                        "keychain API is only supported on macOS",
+                    ));
+                }
+                let account = account_args
+                    .0
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .and_then(|value| {
+                        let trimmed = value.trim();
+                        if trimmed.is_empty() {
+                            None
+                        } else {
+                            Some(trimmed.to_string())
+                        }
+                    });
+                let redacted_account = account.as_ref().map(|value| redact_value(value));
+                if let Some(ref redacted) = redacted_account {
+                    log::info!(
+                        "[plugin:{}] keychain delete: service={}, account={}",
+                        pid_delete,
+                        service,
+                        redacted
+                    );
+                } else {
+                    log::info!(
+                        "[plugin:{}] keychain delete: service={}",
+                        pid_delete,
+                        service
+                    );
+                }
+                let args = if let Some(ref account) = account {
+                    keychain_delete_generic_password_args_for_account(&service, account)
+                } else {
+                    keychain_delete_generic_password_args(&service)
+                };
+                let output = std::process::Command::new("security")
+                    .args(args)
+                    .output()
+                    .map_err(|e| {
+                        Exception::throw_message(
+                            &ctx_inner,
+                            &format!("keychain delete failed: {}", e),
+                        )
+                    })?;
+
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    let first_line = stderr.lines().next().unwrap_or("").trim();
+                    // A missing item is a common, benign outcome when clearing a
+                    // cached credential that was never stored; treat it as success.
+                    let not_found = first_line.contains("could not be found");
+                    if let Some(ref redacted) = redacted_account {
+                        if not_found {
+                            log::info!(
+                                "[plugin:{}] keychain delete miss (no-op): service={}, account={}",
+                                pid_delete,
+                                service,
+                                redacted
+                            );
+                        } else {
+                            log::warn!(
+                                "[plugin:{}] keychain delete failed: service={}, account={}, error={}",
+                                pid_delete,
+                                service,
+                                redacted,
+                                first_line
+                            );
+                        }
+                    } else if not_found {
+                        log::info!(
+                            "[plugin:{}] keychain delete miss (no-op): service={}",
+                            pid_delete,
+                            service
+                        );
+                    } else {
+                        log::warn!(
+                            "[plugin:{}] keychain delete failed: service={}, error={}",
+                            pid_delete,
+                            service,
+                            first_line
+                        );
+                    }
+                    if !not_found {
+                        return Err(Exception::throw_message(
+                            &ctx_inner,
+                            &format!("keychain delete failed: {}", first_line),
+                        ));
+                    }
+                    return Ok(());
+                }
+
+                if let Some(ref redacted) = redacted_account {
+                    log::info!(
+                        "[plugin:{}] keychain delete succeeded: service={}, account={}",
+                        pid_delete,
+                        service,
+                        redacted
+                    );
+                } else {
+                    log::info!(
+                        "[plugin:{}] keychain delete succeeded: service={}",
+                        pid_delete,
+                        service
+                    );
+                }
+                Ok(())
+            },
+        )?,
+    )?;
+
     host.set("keychain", keychain_obj)?;
     Ok(())
 }
@@ -372,7 +516,7 @@ mod tests {
     use rquickjs::{Context, Runtime};
 
     #[test]
-    fn keychain_api_exposes_write_variants() {
+    fn keychain_api_exposes_read_write_and_delete_variants() {
         let rt = Runtime::new().expect("runtime");
         let ctx = Context::full(&rt).expect("context");
         ctx.with(|ctx| {
@@ -394,6 +538,9 @@ mod tests {
             let _write_current_user: Function = keychain
                 .get("writeGenericPasswordForCurrentUser")
                 .expect("writeGenericPasswordForCurrentUser");
+            let _delete: Function = keychain
+                .get("deleteGenericPassword")
+                .expect("deleteGenericPassword");
         });
     }
 
@@ -499,6 +646,47 @@ mod tests {
     }
 
     #[test]
+    fn keychain_delete_generic_password_args_include_service_only_delete() {
+        let args = keychain_delete_generic_password_args("Claude Code-credentials");
+        let rendered: Vec<String> = args
+            .into_iter()
+            .map(|value| value.to_string_lossy().into_owned())
+            .collect();
+
+        assert_eq!(
+            rendered,
+            vec![
+                "delete-generic-password",
+                "-s",
+                "Claude Code-credentials",
+            ]
+        );
+    }
+
+    #[test]
+    fn keychain_delete_generic_password_args_for_account_include_account_and_service() {
+        let args = keychain_delete_generic_password_args_for_account(
+            "Claude Code-credentials",
+            "openusage-test-user",
+        );
+        let rendered: Vec<String> = args
+            .into_iter()
+            .map(|value| value.to_string_lossy().into_owned())
+            .collect();
+
+        assert_eq!(
+            rendered,
+            vec![
+                "delete-generic-password",
+                "-a",
+                "openusage-test-user",
+                "-s",
+                "Claude Code-credentials",
+            ]
+        );
+    }
+
+    #[test]
     fn keychain_add_generic_password_args_for_account_include_update_account_service_and_value() {
         let args = keychain_add_generic_password_args_for_account(
             "Claude Code-credentials",
@@ -524,5 +712,4 @@ mod tests {
             ]
         );
     }
-
 }

@@ -1,33 +1,40 @@
 import { useMemo } from "react";
+import { Hourglass, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AboutDialog } from "@/components/about-dialog";
 import type { UpdateStatus } from "@/hooks/use-app-update";
 import { useNowTicker } from "@/hooks/use-now-ticker";
 
 interface PanelFooterProps {
-  version: string;
   autoUpdateNextAt: number | null;
   updateStatus: UpdateStatus;
   onUpdateInstall: () => void;
   onUpdateCheck: () => void;
   onRefreshAll?: () => void;
-  showAbout: boolean;
-  onShowAbout: () => void;
-  onCloseAbout: () => void;
+  isRefreshing?: boolean;
+  refreshCooldownEndsAt?: number | null;
+  lastUpdatedAt?: number | null;
+}
+
+function formatRelativeTime(diffMs: number): string {
+  const seconds = Math.floor(Math.max(0, diffMs) / 1000);
+  if (seconds < 1) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 function VersionDisplay({
-  version,
   updateStatus,
   onUpdateInstall,
   onUpdateCheck,
-  onVersionClick,
 }: {
-  version: string;
   updateStatus: UpdateStatus;
   onUpdateInstall: () => void;
   onUpdateCheck: () => void;
-  onVersionClick: () => void;
 }) {
   switch (updateStatus.status) {
     case "downloading":
@@ -72,32 +79,28 @@ function VersionDisplay({
         </span>
       );
     default:
-      return (
-        <button
-          type="button"
-          onClick={onVersionClick}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          OhMyUsage {version}
-        </button>
-      );
+      // Idle: no version display. The About dialog is no longer surfaced here;
+      // the version is still visible on installed builds via the app bundle.
+      return null;
   }
 }
 
 export function PanelFooter({
-  version,
   autoUpdateNextAt,
   updateStatus,
   onUpdateInstall,
   onUpdateCheck,
   onRefreshAll,
-  showAbout,
-  onShowAbout,
-  onCloseAbout,
+  isRefreshing,
+  refreshCooldownEndsAt,
+  lastUpdatedAt,
 }: PanelFooterProps) {
   const now = useNowTicker({
-    enabled: Boolean(autoUpdateNextAt),
-    resetKey: autoUpdateNextAt,
+    enabled:
+      Boolean(autoUpdateNextAt) ||
+      Boolean(refreshCooldownEndsAt) ||
+      Boolean(lastUpdatedAt),
+    resetKey: autoUpdateNextAt ?? refreshCooldownEndsAt ?? lastUpdatedAt,
   });
 
   const countdownLabel = useMemo(() => {
@@ -111,16 +114,61 @@ export function PanelFooter({
     return `Next update in ${totalSeconds}s`;
   }, [autoUpdateNextAt, now]);
 
+  const updatedLabel = useMemo(() => {
+    if (!lastUpdatedAt) return null;
+    return `Updated ${formatRelativeTime(now - lastUpdatedAt)}`;
+  }, [lastUpdatedAt, now]);
+
+  const cooldownRemainingMs = Math.max(0, (refreshCooldownEndsAt ?? 0) - now);
+  const onCooldown =
+    !isRefreshing && cooldownRemainingMs > 0 && Boolean(refreshCooldownEndsAt);
+  const cooldownLabel = useMemo(() => {
+    if (!onCooldown) return undefined;
+    const minutes = Math.ceil(cooldownRemainingMs / 60_000);
+    return `Refresh again in ${minutes}m`;
+  }, [onCooldown, cooldownRemainingMs]);
+
   return (
-    <>
-      <div className="flex justify-between items-center h-8 pt-1.5 border-t">
+    <div className="flex justify-between items-center h-8 pt-1.5 border-t">
+      <div className="flex items-center gap-1.5 min-w-0">
         <VersionDisplay
-          version={version}
           updateStatus={updateStatus}
           onUpdateInstall={onUpdateInstall}
           onUpdateCheck={onUpdateCheck}
-          onVersionClick={onShowAbout}
         />
+        {updatedLabel && (
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {updatedLabel}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5">
+        {onRefreshAll && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            disabled={isRefreshing || onCooldown}
+            onClick={(event) => {
+              event.currentTarget.blur();
+              onRefreshAll();
+            }}
+            title={
+              isRefreshing
+                ? "Refreshing..."
+                : onCooldown
+                  ? cooldownLabel
+                  : "Refresh Now"
+            }
+            aria-label="Refresh Now"
+          >
+            {onCooldown ? (
+              <Hourglass className="size-3" />
+            ) : (
+              <RefreshCw className={`size-3 ${isRefreshing ? "animate-spin" : ""}`} />
+            )}
+          </Button>
+        )}
         {autoUpdateNextAt !== null && onRefreshAll ? (
           <button
             type="button"
@@ -139,9 +187,6 @@ export function PanelFooter({
           </span>
         )}
       </div>
-      {showAbout && (
-        <AboutDialog version={version} onClose={onCloseAbout} />
-      )}
-    </>
+    </div>
   );
 }

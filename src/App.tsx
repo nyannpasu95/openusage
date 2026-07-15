@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { AppShell } from "@/components/app/app-shell"
 import { useAppPluginViews } from "@/hooks/app/use-app-plugin-views"
@@ -10,7 +10,7 @@ import { useSettingsPluginList } from "@/hooks/app/use-settings-plugin-list"
 import { useSettingsSystemActions } from "@/hooks/app/use-settings-system-actions"
 import { useSettingsTheme } from "@/hooks/app/use-settings-theme"
 import { useTrayIcon } from "@/hooks/app/use-tray-icon"
-import { REFRESH_COOLDOWN_MS, savePluginSettings } from "@/lib/settings"
+import { REFRESH_COOLDOWN_MS, getEnabledPluginIds, savePluginSettings } from "@/lib/settings"
 import { type PluginContextAction } from "@/components/side-nav"
 import { useAppPluginStore } from "@/stores/app-plugin-store"
 import { useAppPreferencesStore } from "@/stores/app-preferences-store"
@@ -237,6 +237,33 @@ function App() {
     [pluginStates]
   )
 
+  const { isRefreshing, refreshCooldownEndsAt, lastUpdatedAt } = useMemo(() => {
+    if (!pluginSettings) return { isRefreshing: false, refreshCooldownEndsAt: null, lastUpdatedAt: null }
+    const enabledIds = getEnabledPluginIds(pluginSettings)
+    const states = enabledIds
+      .map((id) => pluginStates[id])
+      .filter((s): s is NonNullable<typeof s> => Boolean(s))
+    const refreshing = states.some((s) => s.loading)
+    // "Last updated" = the most recent successful probe across all enabled
+    // plugins (auto or manual). Reflects when the displayed data was fetched.
+    const latestUpdated = states.reduce<number | null>((max, s) => {
+      const at = s.lastUpdatedAt
+      if (at === null) return max
+      return max === null || at > max ? at : max
+    }, null)
+    // If any enabled plugin has never been manually refreshed, the cooldown
+    // does not apply (a manual refresh is always possible). Otherwise the
+    // button is on cooldown until the most-recently-refreshed plugin clears it.
+    const hasEligible = states.some((s) => !s.lastManualRefreshAt)
+    if (hasEligible) return { isRefreshing: refreshing, refreshCooldownEndsAt: null, lastUpdatedAt: latestUpdated }
+    const latestRefresh = states.reduce<number | null>((max, s) => {
+      const at = s.lastManualRefreshAt ?? 0
+      return max === null || at > max ? at : max
+    }, null)
+    const endsAt = latestRefresh === null ? null : latestRefresh + REFRESH_COOLDOWN_MS
+    return { isRefreshing: refreshing, refreshCooldownEndsAt: endsAt, lastUpdatedAt: latestUpdated }
+  }, [pluginSettings, pluginStates])
+
   return (
     <AppShell
       onRefreshAll={handleRefreshAll}
@@ -244,6 +271,9 @@ function App() {
       displayPlugins={displayPlugins}
       settingsPlugins={settingsPlugins}
       autoUpdateNextAt={autoUpdateNextAt}
+      isRefreshing={isRefreshing}
+      refreshCooldownEndsAt={refreshCooldownEndsAt}
+      lastUpdatedAt={lastUpdatedAt}
       selectedPlugin={selectedPlugin}
       onPluginContextAction={handlePluginContextAction}
       isPluginRefreshAvailable={isPluginRefreshAvailable}

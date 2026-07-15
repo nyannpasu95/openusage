@@ -29,7 +29,7 @@ By submitting a pull request, you agree that your contribution is licensed under
 2. Create a branch (`feat/my-change`, `fix/some-bug`, etc.)
 3. Make your changes
 4. Run `bun run build` and `bun run test` to verify nothing is broken
-5. Open a PR against `main`
+5. Open a PR against `tikuwa`
 
 ### Add a provider plugin
 
@@ -41,7 +41,7 @@ Each provider is a plugin. See the [Plugin API docs](docs/plugins/api.md) for th
 4. Test it locally with `bun tauri dev`
 5. Open a PR with screenshots showing it working
 
-You can also [open an issue](https://github.com/robinebers/openusage/issues/new?template=new_provider.yml) to request a provider without building it yourself.
+You can also [open an issue](https://github.com/nyannpasu95/openusage/issues/new?template=new_provider.yml) to request a provider without building it yourself.
 
 ### Fix a bug
 
@@ -52,7 +52,7 @@ You can also [open an issue](https://github.com/robinebers/openusage/issues/new?
 
 ### Request a feature
 
-Don't open a PR for large features without discussing first. [Open an issue](https://github.com/robinebers/openusage/issues/new?template=feature_request.yml) and make your case.
+Don't open a PR for large features without discussing first. [Open an issue](https://github.com/nyannpasu95/openusage/issues/new?template=feature_request.yml) and make your case.
 
 ## What Gets Accepted
 
@@ -79,13 +79,10 @@ Don't open a PR for large features without discussing first. [Open an issue](htt
 
 ## Maintainers
 
-- [@robinebers](https://github.com/robinebers) (lead)
-- [@validatedev](https://github.com/validatedev)
-- [@davidarny](https://github.com/davidarny)
+- [@nyannpasu95](https://github.com/nyannpasu95) (fork maintainer)
 
-All PRs require approval from at least 2 maintainers before merging.
-Release tags (`v*`) are owner-managed and can only be created by [@robinebers](https://github.com/robinebers).
+Release tags (`v*`) are owner-managed and can only be created by [@nyannpasu95](https://github.com/nyannpasu95).
 
 ## Questions?
 
-Open a [bug report](https://github.com/robinebers/openusage/issues/new?template=bug_report.yml) or [feature request](https://github.com/robinebers/openusage/issues/new?template=feature_request.yml) using the issue templates.
+Open a [bug report](https://github.com/nyannpasu95/openusage/issues/new?template=bug_report.yml) or [feature request](https://github.com/nyannpasu95/openusage/issues/new?template=feature_request.yml) using the issue templates.

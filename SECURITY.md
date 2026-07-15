@@ -6,7 +6,7 @@ If you find a security vulnerability in OhMyUsage, please report it responsibly.
 
 ### Preferred: GitHub Security Advisories
 
-1. Go to the [Security Advisories page](https://github.com/robinebers/openusage/security/advisories/new)
+1. Go to the [Security Advisories page](https://github.com/nyannpasu95/openusage/security/advisories/new)
 2. Click "Report a vulnerability"
 3. Fill in the details
 
@@ -14,7 +14,7 @@ This keeps the report private until a fix is released.
 
 ### Alternative: Email
 
-Send details to [rob@robinebers.com](mailto:rob@robinebers.com) with the subject line "OhMyUsage Security Report".
+Send details to the repo owner via the email listed on the [GitHub profile](https://github.com/nyannpasu95) with the subject line "OhMyUsage Security Report".
 
 ## What to Include
 

@@ -337,7 +337,7 @@ export function SettingsPage({
           How obsessive are you
         </p>
         <div className="bg-muted/50 rounded-lg p-1">
-          <div className="flex gap-1" role="radiogroup" aria-label="Auto-update interval">
+          <div className="grid grid-cols-4 gap-1" role="radiogroup" aria-label="Auto-update interval">
             {AUTO_UPDATE_OPTIONS.map((option) => {
               const isActive = option.value === autoUpdateInterval;
               return (
@@ -348,7 +348,6 @@ export function SettingsPage({
                   aria-checked={isActive}
                   variant={isActive ? "default" : "outline"}
                   size="sm"
-                  className="flex-1"
                   onClick={() => onAutoUpdateIntervalChange(option.value)}
                 >
                   {option.label}
