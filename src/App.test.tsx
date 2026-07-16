@@ -26,6 +26,8 @@ const state = vi.hoisted(() => ({
   migrateLegacyTraySettingsMock: vi.fn(),
   loadGlobalShortcutMock: vi.fn(),
   saveGlobalShortcutMock: vi.fn(),
+  loadLowUsageAlertsMock: vi.fn(),
+  saveLowUsageAlertsMock: vi.fn(),
   loadStartOnLoginMock: vi.fn(),
   saveStartOnLoginMock: vi.fn(),
   autostartEnableMock: vi.fn(),
@@ -42,6 +44,8 @@ const state = vi.hoisted(() => ({
   traySetTitleMock: vi.fn(),
   traySetTooltipMock: vi.fn(),
   resolveResourceMock: vi.fn(),
+  sendLowUsageAlertMock: vi.fn(),
+  requestLowUsageAlertPermissionMock: vi.fn(),
 }))
 
 const dndState = vi.hoisted(() => ({
@@ -202,6 +206,15 @@ vi.mock("@tauri-apps/plugin-autostart", () => ({
   isEnabled: state.autostartIsEnabledMock,
 }))
 
+vi.mock("@/lib/low-usage-alerts", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/low-usage-alerts")>("@/lib/low-usage-alerts")
+  return {
+    ...actual,
+    sendLowUsageAlert: state.sendLowUsageAlertMock,
+    requestLowUsageAlertPermission: state.requestLowUsageAlertPermissionMock,
+  }
+})
+
 vi.mock("@/lib/tray-bars-icon", async () => {
   const actual = await vi.importActual<typeof import("@/lib/tray-bars-icon")>("@/lib/tray-bars-icon")
   return {
@@ -245,6 +258,8 @@ vi.mock("@/lib/settings", async () => {
     migrateLegacyTraySettings: state.migrateLegacyTraySettingsMock,
     loadGlobalShortcut: state.loadGlobalShortcutMock,
     saveGlobalShortcut: state.saveGlobalShortcutMock,
+    loadLowUsageAlerts: state.loadLowUsageAlertsMock,
+    saveLowUsageAlerts: state.saveLowUsageAlertsMock,
     loadStartOnLogin: state.loadStartOnLoginMock,
     saveStartOnLogin: state.saveStartOnLoginMock,
   }
@@ -285,6 +300,8 @@ describe("App", () => {
     state.migrateLegacyTraySettingsMock.mockReset()
     state.loadGlobalShortcutMock.mockReset()
     state.saveGlobalShortcutMock.mockReset()
+    state.loadLowUsageAlertsMock.mockReset()
+    state.saveLowUsageAlertsMock.mockReset()
     state.loadStartOnLoginMock.mockReset()
     state.saveStartOnLoginMock.mockReset()
     state.autostartEnableMock.mockReset()
@@ -297,6 +314,8 @@ describe("App", () => {
     state.traySetTitleMock.mockReset()
     state.traySetTooltipMock.mockReset()
     state.resolveResourceMock.mockReset()
+    state.sendLowUsageAlertMock.mockReset()
+    state.requestLowUsageAlertPermissionMock.mockReset()
     menuState.iconMenuItemConfigs.length = 0
     menuState.iconMenuItemNewMock.mockReset()
     menuState.iconMenuItemCloseMock.mockReset()
@@ -327,6 +346,10 @@ describe("App", () => {
     state.saveGlobalShortcutMock.mockResolvedValue(undefined)
     state.loadStartOnLoginMock.mockResolvedValue(false)
     state.saveStartOnLoginMock.mockResolvedValue(undefined)
+    state.loadLowUsageAlertsMock.mockResolvedValue(false)
+    state.saveLowUsageAlertsMock.mockResolvedValue(undefined)
+    state.sendLowUsageAlertMock.mockResolvedValue(undefined)
+    state.requestLowUsageAlertPermissionMock.mockResolvedValue(true)
     state.autostartEnableMock.mockResolvedValue(undefined)
     state.autostartDisableMock.mockResolvedValue(undefined)
     state.autostartIsEnabledMock.mockResolvedValue(false)
@@ -449,6 +472,42 @@ describe("App", () => {
     })
     state.probeHandlers?.onBatchComplete()
     await screen.findByText("Now")
+  })
+
+  it("sends one alert when remaining usage crosses down to 10%", async () => {
+    state.loadLowUsageAlertsMock.mockResolvedValueOnce(true)
+    render(<App />)
+    await waitFor(() => expect(useAppPreferencesStore.getState().lowUsageAlerts).toBe(true))
+
+    state.probeHandlers?.onResult({
+      providerId: "a",
+      displayName: "Alpha",
+      iconUrl: "icon-a",
+      lines: [{ type: "progress", label: "Session", used: 89, limit: 100, format: { kind: "percent" } }],
+    }, "baseline")
+    state.probeHandlers?.onResult({
+      providerId: "a",
+      displayName: "Alpha",
+      iconUrl: "icon-a",
+      lines: [{ type: "progress", label: "Session", used: 90, limit: 100, format: { kind: "percent" } }],
+    }, "crossing")
+
+    await waitFor(() => {
+      expect(state.sendLowUsageAlertMock).toHaveBeenCalledWith({
+        providerId: "a",
+        providerName: "Alpha",
+        metricLabel: "Session",
+        remainingPercent: 10,
+      })
+    })
+
+    state.probeHandlers?.onResult({
+      providerId: "a",
+      displayName: "Alpha",
+      iconUrl: "icon-a",
+      lines: [{ type: "progress", label: "Session", used: 95, limit: 100, format: { kind: "percent" } }],
+    }, "still-low")
+    expect(state.sendLowUsageAlertMock).toHaveBeenCalledTimes(1)
   })
 
   it("updates tray icon on probe results when plugin has a primary progress", async () => {

@@ -1,9 +1,11 @@
 import { useCallback } from "react"
 import { invoke } from "@tauri-apps/api/core"
+import { requestLowUsageAlertPermission } from "@/lib/low-usage-alerts"
 import {
   getEnabledPluginIds,
   saveAutoUpdateInterval,
   saveGlobalShortcut,
+  saveLowUsageAlerts,
   saveStartOnLogin,
   type AutoUpdateIntervalMinutes,
   type GlobalShortcut,
@@ -16,6 +18,7 @@ type UseSettingsSystemActionsArgs = {
   setAutoUpdateNextAt: (value: number | null) => void
   setGlobalShortcut: (value: GlobalShortcut) => void
   setStartOnLogin: (value: boolean) => void
+  setLowUsageAlerts: (value: boolean) => void
   applyStartOnLogin: (value: boolean) => Promise<void>
 }
 
@@ -25,6 +28,7 @@ export function useSettingsSystemActions({
   setAutoUpdateNextAt,
   setGlobalShortcut,
   setStartOnLogin,
+  setLowUsageAlerts,
   applyStartOnLogin,
 }: UseSettingsSystemActionsArgs) {
   const handleAutoUpdateIntervalChange = useCallback((value: AutoUpdateIntervalMinutes) => {
@@ -64,9 +68,32 @@ export function useSettingsSystemActions({
     })
   }, [applyStartOnLogin, setStartOnLogin])
 
+  const handleLowUsageAlertsChange = useCallback(async (value: boolean) => {
+    if (value) {
+      try {
+        const permissionGranted = await requestLowUsageAlertPermission()
+        if (!permissionGranted) return false
+      } catch (error) {
+        console.error("Failed to request notification permission:", error)
+        return false
+      }
+    }
+
+    setLowUsageAlerts(value)
+    try {
+      await saveLowUsageAlerts(value)
+      return true
+    } catch (error) {
+      console.error("Failed to save low usage alerts:", error)
+      setLowUsageAlerts(!value)
+      return false
+    }
+  }, [setLowUsageAlerts])
+
   return {
     handleAutoUpdateIntervalChange,
     handleGlobalShortcutChange,
     handleStartOnLoginChange,
+    handleLowUsageAlertsChange,
   }
 }

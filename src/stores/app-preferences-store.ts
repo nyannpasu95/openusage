@@ -3,6 +3,7 @@ import {
   DEFAULT_AUTO_UPDATE_INTERVAL,
   DEFAULT_DISPLAY_MODE,
   DEFAULT_GLOBAL_SHORTCUT,
+  DEFAULT_LOW_USAGE_ALERTS,
   DEFAULT_MENUBAR_ICON_STYLE,
   DEFAULT_MENUBAR_METRIC,
   DEFAULT_RESET_TIMER_DISPLAY_MODE,
@@ -27,6 +28,7 @@ type AppPreferencesStore = {
   timeFormatMode: TimeFormatMode
   globalShortcut: GlobalShortcut
   startOnLogin: boolean
+  lowUsageAlerts: boolean
   menubarIconStyle: MenubarIconStyle
   menubarMetric: MenubarMetric
   setAutoUpdateInterval: (value: AutoUpdateIntervalMinutes) => void
@@ -36,6 +38,7 @@ type AppPreferencesStore = {
   setTimeFormatMode: (value: TimeFormatMode) => void
   setGlobalShortcut: (value: GlobalShortcut) => void
   setStartOnLogin: (value: boolean) => void
+  setLowUsageAlerts: (value: boolean) => void
   setMenubarIconStyle: (value: MenubarIconStyle) => void
   setMenubarMetric: (value: MenubarMetric) => void
   resetState: () => void
@@ -49,6 +52,7 @@ const initialState = {
   timeFormatMode: DEFAULT_TIME_FORMAT_MODE,
   globalShortcut: DEFAULT_GLOBAL_SHORTCUT,
   startOnLogin: DEFAULT_START_ON_LOGIN,
+  lowUsageAlerts: DEFAULT_LOW_USAGE_ALERTS,
   menubarIconStyle: DEFAULT_MENUBAR_ICON_STYLE,
   menubarMetric: DEFAULT_MENUBAR_METRIC,
 }
@@ -62,6 +66,7 @@ export const useAppPreferencesStore = create<AppPreferencesStore>((set) => ({
   setTimeFormatMode: (value) => set({ timeFormatMode: value }),
   setGlobalShortcut: (value) => set({ globalShortcut: value }),
   setStartOnLogin: (value) => set({ startOnLogin: value }),
+  setLowUsageAlerts: (value) => set({ lowUsageAlerts: value }),
   setMenubarIconStyle: (value) => set({ menubarIconStyle: value }),
   setMenubarMetric: (value) => set({ menubarMetric: value }),
   resetState: () => set(initialState),

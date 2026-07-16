@@ -12,6 +12,7 @@
 - `selectedPlugin` is computed by `useAppPluginViews`.
 - The selected menu bar provider is runtime-only state in `useTrayIcon`. Opening a provider selects it manually; Home and Settings leave it unchanged.
 - Usage-increase candidates are grouped by probe batch in `App.tsx` and discarded when that batch completes.
+- Low usage alerts are evaluated from consecutive successful probe results in `App.tsx`. The persisted preference only enables the check; previous usage data stays in the probe state.
 
 ## Main data flow
 1. `App.tsx` composes hooks and owns cross-domain orchestration.

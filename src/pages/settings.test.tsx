@@ -71,6 +71,8 @@ const defaultProps = {
   onGlobalShortcutChange: vi.fn(),
   startOnLogin: false,
   onStartOnLoginChange: vi.fn(),
+  lowUsageAlerts: false,
+  onLowUsageAlertsChange: vi.fn().mockResolvedValue(true),
 }
 
 afterEach(() => {
@@ -290,5 +292,30 @@ describe("SettingsPage", () => {
     )
     await userEvent.click(screen.getByText("Start on login"))
     expect(onStartOnLoginChange).toHaveBeenCalledWith(true)
+  })
+
+  it("enables low usage alerts", async () => {
+    const onLowUsageAlertsChange = vi.fn().mockResolvedValue(true)
+    render(
+      <SettingsPage
+        {...defaultProps}
+        onLowUsageAlertsChange={onLowUsageAlertsChange}
+      />
+    )
+    await userEvent.click(screen.getByText("Enable low usage alerts"))
+    expect(onLowUsageAlertsChange).toHaveBeenCalledWith(true)
+  })
+
+  it("shows a friendly message when notification permission is denied", async () => {
+    render(
+      <SettingsPage
+        {...defaultProps}
+        onLowUsageAlertsChange={vi.fn().mockResolvedValue(false)}
+      />
+    )
+    await userEvent.click(screen.getByText("Enable low usage alerts"))
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't enable alerts"
+    )
   })
 })

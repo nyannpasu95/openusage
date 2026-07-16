@@ -39,6 +39,7 @@ export type AppContentActionProps = {
   traySettingsPreview: TraySettingsPreview
   onGlobalShortcutChange: (value: GlobalShortcut) => void
   onStartOnLoginChange: (value: boolean) => void
+  onLowUsageAlertsChange: (value: boolean) => Promise<boolean>
 }
 
 export type AppContentProps = AppContentDerivedProps & AppContentActionProps
@@ -61,6 +62,7 @@ export function AppContent({
   traySettingsPreview,
   onGlobalShortcutChange,
   onStartOnLoginChange,
+  onLowUsageAlertsChange,
 }: AppContentProps) {
   const { activeView } = useAppUiStore(
     useShallow((state) => ({
@@ -78,6 +80,7 @@ export function AppContent({
     globalShortcut,
     themeMode,
     startOnLogin,
+    lowUsageAlerts,
   } = useAppPreferencesStore(
     useShallow((state) => ({
       displayMode: state.displayMode,
@@ -89,6 +92,7 @@ export function AppContent({
       globalShortcut: state.globalShortcut,
       themeMode: state.themeMode,
       startOnLogin: state.startOnLogin,
+      lowUsageAlerts: state.lowUsageAlerts,
     }))
   )
 
@@ -130,6 +134,8 @@ export function AppContent({
         onGlobalShortcutChange={onGlobalShortcutChange}
         startOnLogin={startOnLogin}
         onStartOnLoginChange={onStartOnLoginChange}
+        lowUsageAlerts={lowUsageAlerts}
+        onLowUsageAlertsChange={onLowUsageAlertsChange}
       />
     )
   }

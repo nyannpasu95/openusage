@@ -11,6 +11,7 @@ import {
   DEFAULT_AUTO_UPDATE_INTERVAL,
   DEFAULT_DISPLAY_MODE,
   DEFAULT_GLOBAL_SHORTCUT,
+  DEFAULT_LOW_USAGE_ALERTS,
   DEFAULT_MENUBAR_ICON_STYLE,
   DEFAULT_MENUBAR_METRIC,
   DEFAULT_RESET_TIMER_DISPLAY_MODE,
@@ -21,6 +22,7 @@ import {
   loadAutoUpdateInterval,
   loadDisplayMode,
   loadGlobalShortcut,
+  loadLowUsageAlerts,
   loadMenubarIconStyle,
   loadMenubarMetric,
   migrateLegacyTraySettings,
@@ -53,6 +55,7 @@ type UseSettingsBootstrapArgs = {
   setTimeFormatMode: (value: TimeFormatMode) => void
   setGlobalShortcut: (value: GlobalShortcut) => void
   setStartOnLogin: (value: boolean) => void
+  setLowUsageAlerts: (value: boolean) => void
   setMenubarIconStyle: (value: MenubarIconStyle) => void
   setMenubarMetric: (value: MenubarMetric) => void
   setLoadingForPlugins: (ids: string[]) => void
@@ -70,6 +73,7 @@ export function useSettingsBootstrap({
   setTimeFormatMode,
   setGlobalShortcut,
   setStartOnLogin,
+  setLowUsageAlerts,
   setMenubarIconStyle,
   setMenubarMetric,
   setLoadingForPlugins,
@@ -154,6 +158,13 @@ export function useSettingsBootstrap({
           console.error("Failed to load start on login:", error)
         }
 
+        let storedLowUsageAlerts = DEFAULT_LOW_USAGE_ALERTS
+        try {
+          storedLowUsageAlerts = await loadLowUsageAlerts()
+        } catch (error) {
+          console.error("Failed to load low usage alerts:", error)
+        }
+
         try {
           await applyStartOnLogin(storedStartOnLogin)
         } catch (error) {
@@ -188,6 +199,7 @@ export function useSettingsBootstrap({
           setTimeFormatMode(storedTimeFormatMode)
           setGlobalShortcut(storedGlobalShortcut)
           setStartOnLogin(storedStartOnLogin)
+          setLowUsageAlerts(storedLowUsageAlerts)
           setMenubarIconStyle(storedMenubarIconStyle)
           setMenubarMetric(storedMenubarMetric)
 
@@ -225,6 +237,7 @@ export function useSettingsBootstrap({
     setPluginsMeta,
     setResetTimerDisplayMode,
     setStartOnLogin,
+    setLowUsageAlerts,
     setThemeMode,
     setTimeFormatMode,
     startBatch,

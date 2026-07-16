@@ -11,6 +11,7 @@ import { useSettingsSystemActions } from "@/hooks/app/use-settings-system-action
 import { useSettingsTheme } from "@/hooks/app/use-settings-theme"
 import { useTrayIcon } from "@/hooks/app/use-tray-icon"
 import { REFRESH_COOLDOWN_MS, getEnabledPluginIds, savePluginSettings } from "@/lib/settings"
+import { getLowUsageAlert, sendLowUsageAlert } from "@/lib/low-usage-alerts"
 import {
   getTrayUsageIncrease,
   pickLargestTrayUsageIncrease,
@@ -66,6 +67,8 @@ function App() {
     setTimeFormatMode,
     setGlobalShortcut,
     setStartOnLogin,
+    lowUsageAlerts,
+    setLowUsageAlerts,
   } = useAppPreferencesStore(
     useShallow((state) => ({
       autoUpdateInterval: state.autoUpdateInterval,
@@ -83,6 +86,8 @@ function App() {
       setTimeFormatMode: state.setTimeFormatMode,
       setGlobalShortcut: state.setGlobalShortcut,
       setStartOnLogin: state.setStartOnLogin,
+      lowUsageAlerts: state.lowUsageAlerts,
+      setLowUsageAlerts: state.setLowUsageAlerts,
     }))
   )
 
@@ -131,6 +136,14 @@ function App() {
       scheduleTrayIconUpdate("probe", TRAY_PROBE_DEBOUNCE_MS)
 
       if (!update.successful || !update.previousData) return
+      if (lowUsageAlerts) {
+        const alert = getLowUsageAlert(update.previousData, update.output)
+        if (alert) {
+          void sendLowUsageAlert(alert).catch((error) => {
+            console.error("Failed to send low usage alert:", error)
+          })
+        }
+      }
       const meta = pluginsMeta.find((plugin) => plugin.id === update.output.providerId)
       if (!meta) return
 
@@ -161,7 +174,7 @@ function App() {
       )
       if (selected) selectTrayProvider(selected.providerId)
     }
-  }, [menubarMetric, pluginSettings, pluginsMeta, scheduleTrayIconUpdate, selectTrayProvider])
+  }, [lowUsageAlerts, menubarMetric, pluginSettings, pluginsMeta, scheduleTrayIconUpdate, selectTrayProvider])
 
   useEffect(() => () => {
     usageCandidatesByBatchRef.current.clear()
@@ -179,6 +192,7 @@ function App() {
     setTimeFormatMode,
     setGlobalShortcut,
     setStartOnLogin,
+    setLowUsageAlerts,
     setLoadingForPlugins,
     setErrorForPlugins,
     startBatch,
@@ -209,12 +223,14 @@ function App() {
     handleAutoUpdateIntervalChange,
     handleGlobalShortcutChange,
     handleStartOnLoginChange,
+    handleLowUsageAlertsChange,
   } = useSettingsSystemActions({
     pluginSettings,
     setAutoUpdateInterval,
     setAutoUpdateNextAt,
     setGlobalShortcut,
     setStartOnLogin,
+    setLowUsageAlerts,
     applyStartOnLogin,
   })
 
@@ -344,6 +360,7 @@ function App() {
         traySettingsPreview,
         onGlobalShortcutChange: handleGlobalShortcutChange,
         onStartOnLoginChange: handleStartOnLoginChange,
+        onLowUsageAlertsChange: handleLowUsageAlertsChange,
       }}
     />
   )

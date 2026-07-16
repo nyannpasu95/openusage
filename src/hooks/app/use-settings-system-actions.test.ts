@@ -6,12 +6,16 @@ const {
   invokeMock,
   saveAutoUpdateIntervalMock,
   saveGlobalShortcutMock,
+  saveLowUsageAlertsMock,
   saveStartOnLoginMock,
+  requestLowUsageAlertPermissionMock,
 } = vi.hoisted(() => ({
   getEnabledPluginIdsMock: vi.fn(),
   saveAutoUpdateIntervalMock: vi.fn(),
   saveGlobalShortcutMock: vi.fn(),
+  saveLowUsageAlertsMock: vi.fn(),
   saveStartOnLoginMock: vi.fn(),
+  requestLowUsageAlertPermissionMock: vi.fn(),
   invokeMock: vi.fn(),
 }))
 
@@ -23,7 +27,12 @@ vi.mock("@/lib/settings", () => ({
   getEnabledPluginIds: getEnabledPluginIdsMock,
   saveAutoUpdateInterval: saveAutoUpdateIntervalMock,
   saveGlobalShortcut: saveGlobalShortcutMock,
+  saveLowUsageAlerts: saveLowUsageAlertsMock,
   saveStartOnLogin: saveStartOnLoginMock,
+}))
+
+vi.mock("@/lib/low-usage-alerts", () => ({
+  requestLowUsageAlertPermission: requestLowUsageAlertPermissionMock,
 }))
 
 import { useSettingsSystemActions } from "@/hooks/app/use-settings-system-actions"
@@ -33,7 +42,9 @@ describe("useSettingsSystemActions", () => {
     getEnabledPluginIdsMock.mockReset()
     saveAutoUpdateIntervalMock.mockReset()
     saveGlobalShortcutMock.mockReset()
+    saveLowUsageAlertsMock.mockReset()
     saveStartOnLoginMock.mockReset()
+    requestLowUsageAlertPermissionMock.mockReset()
     invokeMock.mockReset()
 
     getEnabledPluginIdsMock.mockImplementation((settings: { order: string[]; disabled: string[] }) =>
@@ -41,7 +52,9 @@ describe("useSettingsSystemActions", () => {
     )
     saveAutoUpdateIntervalMock.mockResolvedValue(undefined)
     saveGlobalShortcutMock.mockResolvedValue(undefined)
+    saveLowUsageAlertsMock.mockResolvedValue(undefined)
     saveStartOnLoginMock.mockResolvedValue(undefined)
+    requestLowUsageAlertPermissionMock.mockResolvedValue(true)
     invokeMock.mockResolvedValue(undefined)
   })
 
@@ -57,6 +70,7 @@ describe("useSettingsSystemActions", () => {
         setAutoUpdateNextAt,
         setGlobalShortcut: vi.fn(),
         setStartOnLogin: vi.fn(),
+        setLowUsageAlerts: vi.fn(),
         applyStartOnLogin: vi.fn().mockResolvedValue(undefined),
       })
     )
@@ -81,6 +95,7 @@ describe("useSettingsSystemActions", () => {
         setAutoUpdateNextAt,
         setGlobalShortcut: vi.fn(),
         setStartOnLogin: vi.fn(),
+        setLowUsageAlerts: vi.fn(),
         applyStartOnLogin: vi.fn().mockResolvedValue(undefined),
       })
     )
@@ -104,6 +119,7 @@ describe("useSettingsSystemActions", () => {
         setAutoUpdateNextAt: vi.fn(),
         setGlobalShortcut,
         setStartOnLogin,
+        setLowUsageAlerts: vi.fn(),
         applyStartOnLogin,
       })
     )
@@ -145,6 +161,7 @@ describe("useSettingsSystemActions", () => {
         setAutoUpdateNextAt: vi.fn(),
         setGlobalShortcut: vi.fn(),
         setStartOnLogin: vi.fn(),
+        setLowUsageAlerts: vi.fn(),
         applyStartOnLogin,
       })
     )
@@ -164,5 +181,45 @@ describe("useSettingsSystemActions", () => {
     })
 
     errorSpy.mockRestore()
+  })
+
+  it("enables alerts only after notification permission is granted", async () => {
+    const setLowUsageAlerts = vi.fn()
+    const { result } = renderHook(() =>
+      useSettingsSystemActions({
+        pluginSettings: null,
+        setAutoUpdateInterval: vi.fn(),
+        setAutoUpdateNextAt: vi.fn(),
+        setGlobalShortcut: vi.fn(),
+        setStartOnLogin: vi.fn(),
+        setLowUsageAlerts,
+        applyStartOnLogin: vi.fn().mockResolvedValue(undefined),
+      })
+    )
+
+    await expect(result.current.handleLowUsageAlertsChange(true)).resolves.toBe(true)
+    expect(requestLowUsageAlertPermissionMock).toHaveBeenCalledTimes(1)
+    expect(setLowUsageAlerts).toHaveBeenCalledWith(true)
+    expect(saveLowUsageAlertsMock).toHaveBeenCalledWith(true)
+  })
+
+  it("keeps alerts disabled when notification permission is denied", async () => {
+    requestLowUsageAlertPermissionMock.mockResolvedValueOnce(false)
+    const setLowUsageAlerts = vi.fn()
+    const { result } = renderHook(() =>
+      useSettingsSystemActions({
+        pluginSettings: null,
+        setAutoUpdateInterval: vi.fn(),
+        setAutoUpdateNextAt: vi.fn(),
+        setGlobalShortcut: vi.fn(),
+        setStartOnLogin: vi.fn(),
+        setLowUsageAlerts,
+        applyStartOnLogin: vi.fn().mockResolvedValue(undefined),
+      })
+    )
+
+    await expect(result.current.handleLowUsageAlertsChange(true)).resolves.toBe(false)
+    expect(setLowUsageAlerts).not.toHaveBeenCalled()
+    expect(saveLowUsageAlertsMock).not.toHaveBeenCalled()
   })
 })

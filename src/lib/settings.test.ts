@@ -3,6 +3,7 @@ import {
   DEFAULT_AUTO_UPDATE_INTERVAL,
   DEFAULT_DISPLAY_MODE,
   DEFAULT_GLOBAL_SHORTCUT,
+  DEFAULT_LOW_USAGE_ALERTS,
   DEFAULT_MENUBAR_ICON_STYLE,
   DEFAULT_MENUBAR_METRIC,
   DEFAULT_PLUGIN_SETTINGS,
@@ -15,6 +16,7 @@ import {
   loadAutoUpdateInterval,
   loadDisplayMode,
   loadGlobalShortcut,
+  loadLowUsageAlerts,
   loadMenubarIconStyle,
   loadMenubarMetric,
   loadPluginSettings,
@@ -28,6 +30,7 @@ import {
   saveAutoUpdateInterval,
   saveDisplayMode,
   saveGlobalShortcut,
+  saveLowUsageAlerts,
   saveMenubarIconStyle,
   saveMenubarMetric,
   savePluginSettings,
@@ -84,6 +87,20 @@ describe("settings", () => {
     const settings = { order: ["a"], disabled: ["b"] }
     await savePluginSettings(settings)
     await expect(loadPluginSettings()).resolves.toEqual(settings)
+  })
+
+  it("loads low usage alerts disabled by default", async () => {
+    await expect(loadLowUsageAlerts()).resolves.toBe(DEFAULT_LOW_USAGE_ALERTS)
+  })
+
+  it("saves low usage alerts", async () => {
+    await saveLowUsageAlerts(true)
+    await expect(loadLowUsageAlerts()).resolves.toBe(true)
+  })
+
+  it("falls back when the stored low usage alerts value is invalid", async () => {
+    storeState.set("lowUsageAlerts", "yes")
+    await expect(loadLowUsageAlerts()).resolves.toBe(DEFAULT_LOW_USAGE_ALERTS)
   })
 
   it("normalizes order + disabled against known plugins", () => {

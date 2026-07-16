@@ -39,6 +39,7 @@ const LEGACY_TRAY_ICON_STYLE_KEY = "trayIconStyle";
 const LEGACY_TRAY_SHOW_PERCENTAGE_KEY = "trayShowPercentage";
 const GLOBAL_SHORTCUT_KEY = "globalShortcut";
 const START_ON_LOGIN_KEY = "startOnLogin";
+const LOW_USAGE_ALERTS_KEY = "lowUsageAlerts";
 
 export const DEFAULT_AUTO_UPDATE_INTERVAL: AutoUpdateIntervalMinutes = 15;
 export const DEFAULT_THEME_MODE: ThemeMode = "system";
@@ -49,6 +50,7 @@ export const DEFAULT_MENUBAR_ICON_STYLE: MenubarIconStyle = "provider";
 export const DEFAULT_MENUBAR_METRIC: MenubarMetric = "default";
 export const DEFAULT_GLOBAL_SHORTCUT: GlobalShortcut = null;
 export const DEFAULT_START_ON_LOGIN = false;
+export const DEFAULT_LOW_USAGE_ALERTS = false;
 
 const AUTO_UPDATE_INTERVALS: AutoUpdateIntervalMinutes[] = [1, 2, 5, 10, 15, 30, 60, 120];
 const THEME_MODES: ThemeMode[] = ["system", "light", "dark"];
@@ -382,5 +384,16 @@ export async function loadStartOnLogin(): Promise<boolean> {
 
 export async function saveStartOnLogin(value: boolean): Promise<void> {
   await store.set(START_ON_LOGIN_KEY, value);
+  await store.save();
+}
+
+export async function loadLowUsageAlerts(): Promise<boolean> {
+  const stored = await store.get<unknown>(LOW_USAGE_ALERTS_KEY);
+  if (typeof stored === "boolean") return stored;
+  return DEFAULT_LOW_USAGE_ALERTS;
+}
+
+export async function saveLowUsageAlerts(value: boolean): Promise<void> {
+  await store.set(LOW_USAGE_ALERTS_KEY, value);
   await store.save();
 }

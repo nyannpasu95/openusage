@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
+import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { GlobalShortcutSection } from "@/components/global-shortcut-section";
@@ -287,6 +288,8 @@ interface SettingsPageProps {
   onGlobalShortcutChange: (value: GlobalShortcut) => void;
   startOnLogin: boolean;
   onStartOnLoginChange: (value: boolean) => void;
+  lowUsageAlerts: boolean;
+  onLowUsageAlertsChange: (value: boolean) => Promise<boolean>;
 }
 
 export function SettingsPage({
@@ -312,7 +315,10 @@ export function SettingsPage({
   onGlobalShortcutChange,
   startOnLogin,
   onStartOnLoginChange,
+  lowUsageAlerts,
+  onLowUsageAlertsChange,
 }: SettingsPageProps) {
+  const [lowUsageAlertError, setLowUsageAlertError] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -547,6 +553,34 @@ export function SettingsPage({
         globalShortcut={globalShortcut}
         onGlobalShortcutChange={onGlobalShortcutChange}
       />
+      <section>
+        <h3 className="text-lg font-semibold mb-0">Low Usage Alerts</h3>
+        <p className="text-sm text-muted-foreground mb-2">
+          Notify when a usage limit reaches 10% left
+        </p>
+        <label className="flex items-center gap-2 text-sm select-none text-foreground">
+          <Checkbox
+            key={`low-usage-alerts-${lowUsageAlerts}`}
+            checked={lowUsageAlerts}
+            onCheckedChange={(checked) => {
+              const nextValue = checked === true;
+              void onLowUsageAlertsChange(nextValue).then((applied) => {
+                setLowUsageAlertError(
+                  nextValue && !applied
+                    ? "Couldn't enable alerts. Check system notification access and try again."
+                    : null
+                );
+              });
+            }}
+          />
+          Enable low usage alerts
+        </label>
+        {lowUsageAlertError && (
+          <p role="alert" className="text-xs text-destructive mt-2">
+            {lowUsageAlertError}
+          </p>
+        )}
+      </section>
       <section>
         <h3 className="text-lg font-semibold mb-0">Start on Login</h3>
         <p className="text-sm text-muted-foreground mb-2">
