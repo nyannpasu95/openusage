@@ -1,4 +1,4 @@
-const { cpSync, mkdirSync, readFileSync, readdirSync, rmSync } = require("fs")
+const { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } = require("fs")
 const { dirname, isAbsolute, join, relative, resolve } = require("path")
 
 const root = __dirname
@@ -7,6 +7,8 @@ const srcDir = join(root, "plugins")
 const dstDir = join(root, "src-tauri", "resources", "bundled_plugins")
 
 rmSync(dstDir, { recursive: true, force: true })
+mkdirSync(dstDir, { recursive: true })
+writeFileSync(join(dstDir, ".gitkeep"), "")
 
 const plugins = readdirSync(srcDir, { withFileTypes: true })
   .filter((d) => d.isDirectory() && !exclude.has(d.name))
