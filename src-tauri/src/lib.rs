@@ -279,12 +279,14 @@ async fn start_probe_batch(
     );
 
     if selected_plugins.is_empty() {
-        let _ = app_handle.emit(
+        if let Err(e) = app_handle.emit(
             "probe:batch-complete",
             ProbeBatchComplete {
                 batch_id: batch_id.clone(),
             },
-        );
+        ) {
+            log::warn!("failed to emit probe:batch-complete: {}", e);
+        }
         return Ok(ProbeBatchStarted {
             batch_id,
             plugin_ids: response_plugin_ids,
@@ -350,13 +352,15 @@ async fn start_probe_batch(
                             );
                             local_http_api::cache_successful_output(&output);
                         }
-                        let _ = handle.emit(
+                        if let Err(e) = handle.emit(
                             "probe:result",
                             ProbeResult {
                                 batch_id: bid.clone(),
                                 output,
                             },
-                        );
+                        ) {
+                            log::warn!("failed to emit probe:result: {}", e);
+                        }
                     }
                     Err(_) => {
                         log::error!("probe {} panicked", plugin_id);
@@ -365,12 +369,14 @@ async fn start_probe_batch(
 
                 if counter.fetch_sub(1, Ordering::SeqCst) == 1 {
                     log::info!("probe batch {} complete", completion_bid);
-                    let _ = completion_handle.emit(
+                    if let Err(e) = completion_handle.emit(
                         "probe:batch-complete",
                         ProbeBatchComplete {
                             batch_id: completion_bid.clone(),
                         },
-                    );
+                    ) {
+                        log::warn!("failed to emit probe:batch-complete: {}", e);
+                    }
                 }
             }
         });
@@ -460,7 +466,7 @@ fn update_global_shortcut(
 #[tauri::command]
 fn list_plugins(state: tauri::State<'_, Mutex<AppState>>) -> Vec<PluginMeta> {
     let plugins = {
-        let locked = state.lock().expect("plugin state poisoned");
+        let locked = state.lock().unwrap_or_else(|e| e.into_inner());
         locked.plugins.clone()
     };
     log::debug!("list_plugins: {} plugins", plugins.len());
@@ -487,7 +493,7 @@ fn list_plugins(state: tauri::State<'_, Mutex<AppState>>) -> Vec<PluginMeta> {
             PluginMeta {
                 id: plugin.manifest.id,
                 name: plugin.manifest.name,
-                icon_url: plugin.icon_data_url,
+                icon_url: plugin.icon_data_url.to_string(),
                 brand_color: plugin.manifest.brand_color,
                 lines: plugin
                     .manifest

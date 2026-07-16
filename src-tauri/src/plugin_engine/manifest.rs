@@ -1,6 +1,7 @@
 use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,15 +44,18 @@ pub struct PluginManifest {
 pub struct LoadedPlugin {
     pub manifest: PluginManifest,
     pub plugin_dir: PathBuf,
-    pub entry_script: String,
-    pub icon_data_url: String,
+    pub entry_script: Arc<str>,
+    pub icon_data_url: Arc<str>,
 }
 
 pub fn load_plugins_from_dir(plugins_dir: &std::path::Path) -> Vec<LoadedPlugin> {
     let mut plugins = Vec::new();
     let entries = match std::fs::read_dir(plugins_dir) {
         Ok(e) => e,
-        Err(_) => return plugins,
+        Err(e) => {
+            log::error!("failed to read plugins dir {}: {}", plugins_dir.display(), e);
+            return plugins;
+        }
     };
 
     for entry in entries.flatten() {
@@ -63,8 +67,9 @@ pub fn load_plugins_from_dir(plugins_dir: &std::path::Path) -> Vec<LoadedPlugin>
         if !manifest_path.exists() {
             continue;
         }
-        if let Ok(p) = load_single_plugin(&path) {
-            plugins.push(p);
+        match load_single_plugin(&path) {
+            Ok(p) => plugins.push(p),
+            Err(e) => log::error!("skipping plugin at {}: {}", path.display(), e),
         }
     }
 
@@ -163,7 +168,7 @@ fn load_single_plugin(
         return Err("plugin entry must be a file".into());
     }
 
-    let entry_script = std::fs::read_to_string(&canonical_entry_path)?;
+    let entry_script: Arc<str> = std::fs::read_to_string(&canonical_entry_path)?.into();
 
     if manifest.icon.trim().is_empty() {
         return Err("plugin icon field cannot be empty".into());
@@ -181,7 +186,8 @@ fn load_single_plugin(
     }
 
     let icon_bytes = std::fs::read(&canonical_icon_path)?;
-    let icon_data_url = format!("data:image/svg+xml;base64,{}", STANDARD.encode(&icon_bytes));
+    let icon_data_url: Arc<str> =
+        format!("data:image/svg+xml;base64,{}", STANDARD.encode(&icon_bytes)).into();
 
     Ok(LoadedPlugin {
         manifest,
@@ -503,5 +509,50 @@ mod tests {
         assert!(validate_plugin_id("my_plugin").is_err());
         assert!(validate_plugin_id("my.plugin").is_err());
         assert!(validate_plugin_id("my plugin").is_err());
+    }
+
+    #[test]
+    fn load_plugins_from_dir_skips_broken_plugin_but_loads_valid_one() {
+        use std::fs;
+        let tmp = std::env::temp_dir().join(format!(
+            "ohmyusage-manifest-test-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(&tmp).unwrap();
+
+        // Broken plugin: invalid JSON manifest.
+        let bad = tmp.join("bad");
+        fs::create_dir_all(&bad).unwrap();
+        fs::write(bad.join("plugin.json"), "not valid json").unwrap();
+
+        // Valid plugin.
+        let good = tmp.join("good");
+        fs::create_dir_all(&good).unwrap();
+        fs::write(
+            good.join("plugin.json"),
+            r#"{
+              "schemaVersion": 1,
+              "id": "good",
+              "name": "Good",
+              "version": "0.0.1",
+              "entry": "plugin.js",
+              "icon": "icon.svg",
+              "brandColor": null,
+              "lines": [{ "type": "text", "label": "A", "scope": "overview" }]
+            }"#,
+        )
+        .unwrap();
+        fs::write(good.join("plugin.js"), "function probe(){}").unwrap();
+        fs::write(good.join("icon.svg"), "<svg></svg>").unwrap();
+
+        let plugins = load_plugins_from_dir(&tmp);
+        let _ = fs::remove_dir_all(&tmp);
+
+        assert_eq!(plugins.len(), 1, "broken plugin should be skipped");
+        assert_eq!(plugins[0].manifest.id, "good");
     }
 }

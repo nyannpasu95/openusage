@@ -3,6 +3,7 @@ use crate::plugin_engine::manifest::LoadedPlugin;
 use rquickjs::{Array, Context, Ctx, Error, Object, Promise, Runtime, Value};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 const PROBE_TIMEOUT_SECS: u64 = 30;
@@ -110,8 +111,8 @@ fn run_probe_with_timeout(
 
     let plugin_id = plugin.manifest.id.clone();
     let display_name = plugin.manifest.name.clone();
-    let entry_script = plugin.entry_script.clone();
-    let icon_url = plugin.icon_data_url.clone();
+    let entry_script = Arc::clone(&plugin.entry_script);
+    let icon_url = Arc::clone(&plugin.icon_data_url);
     let app_data = app_data_dir.to_path_buf();
 
     ctx.with(|ctx| {
@@ -233,7 +234,7 @@ fn run_probe_with_timeout(
             display_name,
             plan,
             lines,
-            icon_url,
+            icon_url: icon_url.to_string(),
         }
     })
 }
@@ -696,7 +697,7 @@ fn error_output(plugin: &LoadedPlugin, message: String) -> PluginOutput {
         display_name: plugin.manifest.name.clone(),
         plan: None,
         lines: vec![error_line(message)],
-        icon_url: plugin.icon_data_url.clone(),
+        icon_url: plugin.icon_data_url.to_string(),
     }
 }
 
@@ -768,8 +769,8 @@ mod tests {
                 links: vec![],
             },
             plugin_dir: PathBuf::from("."),
-            entry_script: entry_script.to_string(),
-            icon_data_url: "data:image/svg+xml;base64,".to_string(),
+            entry_script: Arc::from(entry_script),
+            icon_data_url: Arc::from("data:image/svg+xml;base64,"),
         }
     }
 

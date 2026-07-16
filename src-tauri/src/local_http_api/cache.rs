@@ -176,7 +176,7 @@ fn should_log_cache_write_failure(consecutive_failures: u32) -> bool {
 }
 
 fn pending_cache_write() -> Option<(u64, PathBuf, HashMap<String, CachedPluginSnapshot>)> {
-    let mut state = cache_state().lock().expect("cache state poisoned");
+    let mut state = cache_state().lock().unwrap_or_else(|e| e.into_inner());
     if state.dirty_generation == state.flushed_generation {
         state.flush_scheduled = false;
         return None;
@@ -190,14 +190,14 @@ fn pending_cache_write() -> Option<(u64, PathBuf, HashMap<String, CachedPluginSn
 }
 
 fn mark_cache_flushed(generation: u64) {
-    let mut state = cache_state().lock().expect("cache state poisoned");
+    let mut state = cache_state().lock().unwrap_or_else(|e| e.into_inner());
     state.flushed_generation = generation;
 }
 
 fn flush_pending_cache_once() -> CacheFlushResult {
     let _write_guard = cache_write_lock()
         .lock()
-        .expect("cache write lock poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     let Some((generation, app_data_dir, snapshots)) = pending_cache_write() else {
         return CacheFlushResult::Idle;
     };
@@ -217,7 +217,7 @@ fn flush_pending_cache_once() -> CacheFlushResult {
 
 pub fn init(app_data_dir: &Path, known_plugin_ids: Vec<String>) {
     let snapshots = load_cache(app_data_dir);
-    let mut state = cache_state().lock().expect("cache state poisoned");
+    let mut state = cache_state().lock().unwrap_or_else(|e| e.into_inner());
     state.snapshots = snapshots;
     state.app_data_dir = app_data_dir.to_path_buf();
     state.known_plugin_ids = known_plugin_ids;
@@ -239,7 +239,7 @@ pub fn cache_successful_output(output: &PluginOutput) {
         fetched_at,
     };
 
-    let mut state = cache_state().lock().expect("cache state poisoned");
+    let mut state = cache_state().lock().unwrap_or_else(|e| e.into_inner());
     state.snapshots.insert(output.provider_id.clone(), snapshot);
     state.dirty_generation = state.dirty_generation.wrapping_add(1);
     schedule_cache_flush_locked(&mut state);

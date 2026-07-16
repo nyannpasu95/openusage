@@ -165,15 +165,21 @@ pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
             match event.id.as_ref() {
                 "show_stats" => {
                     show_panel(app_handle);
-                    let _ = app_handle.emit("tray:navigate", "home");
+                    if let Err(e) = app_handle.emit("tray:navigate", "home") {
+                        log::warn!("failed to emit tray:navigate: {}", e);
+                    }
                 }
                 "go_to_settings" => {
                     show_panel(app_handle);
-                    let _ = app_handle.emit("tray:navigate", "settings");
+                    if let Err(e) = app_handle.emit("tray:navigate", "settings") {
+                        log::warn!("failed to emit tray:navigate: {}", e);
+                    }
                 }
                 "about" => {
                     show_panel(app_handle);
-                    let _ = app_handle.emit("tray:show-about", ());
+                    if let Err(e) = app_handle.emit("tray:show-about", ()) {
+                        log::warn!("failed to emit tray:show-about: {}", e);
+                    }
                 }
                 "quit" => {
                     log::info!("quit requested via tray");

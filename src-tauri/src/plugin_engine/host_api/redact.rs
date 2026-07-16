@@ -1,108 +1,38 @@
-/// Redact sensitive value to first4...last4 format (UTF-8 safe)
-pub(crate) fn redact_value(value: &str) -> String {
-    let chars: Vec<char> = value.chars().collect();
-    if chars.len() <= 12 {
-        "[REDACTED]".to_string()
-    } else {
-        let first4: String = chars.iter().take(4).collect();
-        let last4: String = chars
-            .iter()
-            .rev()
-            .take(4)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect();
-        format!("{}...{}", first4, last4)
-    }
-}
+use regex_lite::{Captures, Regex};
+use std::sync::LazyLock;
 
-/// Redact sensitive query parameters in URL
-pub(crate) fn redact_url(url: &str) -> String {
-    let sensitive_params = [
-        "key",
-        "api_key",
-        "apikey",
-        "token",
-        "access_token",
-        "secret",
-        "password",
-        "auth",
-        "authorization",
-        "bearer",
-        "credential",
-        "user",
-        "user_id",
-        "userid",
-        "account_id",
-        "accountid",
-        "profilearn",
-        "profile_arn",
-        "email",
-        "login",
-    ];
+// --- Static regexes (compiled once, reused across all redaction calls) ---
 
-    if let Some(query_start) = url.find('?') {
-        let (base, query) = url.split_at(query_start + 1);
-        let redacted_params: Vec<String> = query
-            .split('&')
-            .map(|param| {
-                if let Some(eq_pos) = param.find('=') {
-                    let (name, value) = param.split_at(eq_pos);
-                    let value = &value[1..]; // skip '='
-                    let name_lower = name.to_lowercase();
-                    if sensitive_params.iter().any(|s| name_lower.contains(s)) && !value.is_empty()
-                    {
-                        format!("{}={}", name, redact_value(value))
-                    } else {
-                        param.to_string()
-                    }
-                } else {
-                    param.to_string()
-                }
-            })
-            .collect();
-        format!("{}{}", base, redacted_params.join("&"))
-    } else {
-        url.to_string()
-    }
-}
+/// JWT pattern `eyJ...` shared by `redact_body` and `redact_log_message`.
+static JWT_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+").unwrap());
 
-/// Redact sensitive patterns in response body for logging
-pub(crate) fn redact_body(body: &str) -> String {
-    let mut result = body.to_string();
+/// API-key pattern for response bodies (allows surrounding quote chars).
+static API_KEY_BODY_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"["']?(sk-|pk-|api_|key_|secret_)[A-Za-z0-9_-]{12,}["']?"#).unwrap()
+});
 
-    // Redact JWTs (eyJ... pattern with dots)
-    let jwt_pattern =
-        regex_lite::Regex::new(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+").unwrap();
-    result = jwt_pattern
-        .replace_all(&result, |caps: &regex_lite::Captures| {
-            redact_value(&caps[0])
-        })
-        .to_string();
+/// API-key pattern for log lines (no quote-boundary capture).
+static API_KEY_LOG_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"(sk-|pk-|api_|key_|secret_)[A-Za-z0-9_-]{12,}"#).unwrap());
 
-    // Redact common API key patterns (sk-xxx, pk-xxx, api_xxx, etc.)
-    let api_key_pattern =
-        regex_lite::Regex::new(r#"["']?(sk-|pk-|api_|key_|secret_)[A-Za-z0-9_-]{12,}["']?"#)
-            .unwrap();
-    result = api_key_pattern
-        .replace_all(&result, |caps: &regex_lite::Captures| {
-            let key = caps[0].trim_matches(|c| c == '"' || c == '\'');
-            redact_value(key)
-        })
-        .to_string();
+/// Devin session token, shared by body and log redaction.
+static DEVIN_SESSION_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"devin-session-token\$[^\s"',}\]]+"#).unwrap());
 
-    if let Ok(devin_session_re) = regex_lite::Regex::new(r#"devin-session-token\$[^\s"',}\]]+"#) {
-        result = devin_session_re
-            .replace_all(&result, |caps: &regex_lite::Captures| {
-                redact_value(&caps[0])
-            })
-            .to_string();
-    }
+/// `account=value` pattern in log lines.
+static ACCOUNT_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"(account=)([^,\s]+)"#).unwrap());
 
-    // Redact JSON values for sensitive keys
-    let sensitive_keys = [
-        "name",
+/// Absolute filesystem path, shared by body and log redaction.
+static PATH_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(/(?:Users|home|opt|private|var|tmp|Applications)/[^\s"')]+)"#).unwrap()
+});
+
+/// Pre-compiled per-sensitive-key JSON value matchers.
+/// Each entry is `(key, regex matching "key": "value")`.
+static SENSITIVE_KEY_RES: LazyLock<Vec<(&'static str, Regex)>> = LazyLock::new(|| {
+    [
         "password",
         "token",
         "access_token",
@@ -138,25 +68,126 @@ pub(crate) fn redact_body(body: &str) -> String {
         "email",
         "login",
         "analytics_tracking_id",
-    ];
-    for key in sensitive_keys {
-        // Match "key": "value" or "key":"value"
+    ]
+    .into_iter()
+    .map(|key| {
         let pattern = format!(r#""{}":\s*"([^"]+)""#, key);
-        if let Ok(re) = regex_lite::Regex::new(&pattern) {
-            result = re
-                .replace_all(&result, |caps: &regex_lite::Captures| {
-                    let value = &caps[1];
-                    format!("\"{}\": \"{}\"", key, redact_value(value))
-                })
-                .to_string();
-        }
+        (key, Regex::new(&pattern).unwrap())
+    })
+    .collect()
+});
+
+/// Redact sensitive value to first4...last4 format (UTF-8 safe)
+pub(crate) fn redact_value(value: &str) -> String {
+    let chars: Vec<char> = value.chars().collect();
+    if chars.len() <= 12 {
+        "[REDACTED]".to_string()
+    } else {
+        let first4: String = chars.iter().take(4).collect();
+        let last4: String = chars
+            .iter()
+            .rev()
+            .take(4)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect();
+        format!("{}...{}", first4, last4)
+    }
+}
+
+/// Redact sensitive query parameters in URL
+pub(crate) fn redact_url(url: &str) -> String {
+    // Exact-match list (case-insensitive). Previously used substring matching
+    // which caused false positives: "auth" matched "author", "key" matched "keyword".
+    let sensitive_params = [
+        "key",
+        "api_key",
+        "apikey",
+        "token",
+        "access_token",
+        "accesstoken",
+        "refresh_token",
+        "refreshtoken",
+        "secret",
+        "client_secret",
+        "clientsecret",
+        "password",
+        "bearer",
+        "credential",
+        "authorization",
+        "auth",
+        "oauth",
+        "user",
+        "user_id",
+        "userid",
+        "username",
+        "account_id",
+        "accountid",
+        "profilearn",
+        "profile_arn",
+        "client_id",
+        "clientid",
+        "code",
+        "state",
+        "email",
+        "login",
+    ];
+
+    if let Some(query_start) = url.find('?') {
+        let (base, query) = url.split_at(query_start + 1);
+        let redacted_params: Vec<String> = query
+            .split('&')
+            .map(|param| {
+                if let Some(eq_pos) = param.find('=') {
+                    let (name, value) = param.split_at(eq_pos);
+                    let value = &value[1..]; // skip '='
+                    let name_lower = name.to_lowercase();
+                    if sensitive_params.iter().any(|s| name_lower == *s) && !value.is_empty()
+                    {
+                        format!("{}={}", name, redact_value(value))
+                    } else {
+                        param.to_string()
+                    }
+                } else {
+                    param.to_string()
+                }
+            })
+            .collect();
+        format!("{}{}", base, redacted_params.join("&"))
+    } else {
+        url.to_string()
+    }
+}
+
+/// Redact sensitive patterns in response body for logging
+pub(crate) fn redact_body(body: &str) -> String {
+    let mut result = body.to_string();
+
+    result = JWT_RE
+        .replace_all(&result, |caps: &Captures| redact_value(&caps[0]))
+        .to_string();
+
+    result = API_KEY_BODY_RE
+        .replace_all(&result, |caps: &Captures| {
+            let key = caps[0].trim_matches(|c| c == '"' || c == '\'');
+            redact_value(key)
+        })
+        .to_string();
+
+    result = DEVIN_SESSION_RE
+        .replace_all(&result, |caps: &Captures| redact_value(&caps[0]))
+        .to_string();
+
+    for (key, re) in SENSITIVE_KEY_RES.iter() {
+        result = re
+            .replace_all(&result, |caps: &Captures| {
+                format!("\"{}\": \"{}\"", key, redact_value(&caps[1]))
+            })
+            .to_string();
     }
 
-    if let Ok(path_re) =
-        regex_lite::Regex::new(r#"(/(?:Users|home|opt|private|var|tmp|Applications)/[^\s"')]+)"#)
-    {
-        result = path_re.replace_all(&result, "[PATH]").to_string();
-    }
+    result = PATH_RE.replace_all(&result, "[PATH]").to_string();
 
     result
 }
@@ -164,40 +195,27 @@ pub(crate) fn redact_body(body: &str) -> String {
 /// Lightweight redaction for log messages.
 pub(crate) fn redact_log_message(msg: &str) -> String {
     let mut result = msg.to_string();
-    if let Ok(jwt_re) = regex_lite::Regex::new(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
-    {
-        result = jwt_re
-            .replace_all(&result, |caps: &regex_lite::Captures| {
-                redact_value(&caps[0])
-            })
-            .to_string();
-    }
-    if let Ok(api_re) = regex_lite::Regex::new(r#"(sk-|pk-|api_|key_|secret_)[A-Za-z0-9_-]{12,}"#) {
-        result = api_re
-            .replace_all(&result, |caps: &regex_lite::Captures| {
-                redact_value(&caps[0])
-            })
-            .to_string();
-    }
-    if let Ok(devin_session_re) = regex_lite::Regex::new(r#"devin-session-token\$[^\s"',}\]]+"#) {
-        result = devin_session_re
-            .replace_all(&result, |caps: &regex_lite::Captures| {
-                redact_value(&caps[0])
-            })
-            .to_string();
-    }
-    if let Ok(account_re) = regex_lite::Regex::new(r#"(account=)([^,\s]+)"#) {
-        result = account_re
-            .replace_all(&result, |caps: &regex_lite::Captures| {
-                format!("{}{}", &caps[1], redact_value(&caps[2]))
-            })
-            .to_string();
-    }
-    if let Ok(path_re) =
-        regex_lite::Regex::new(r#"(/(?:Users|home|opt|private|var|tmp|Applications)/[^\s"')]+)"#)
-    {
-        result = path_re.replace_all(&result, "[PATH]").to_string();
-    }
+
+    result = JWT_RE
+        .replace_all(&result, |caps: &Captures| redact_value(&caps[0]))
+        .to_string();
+
+    result = API_KEY_LOG_RE
+        .replace_all(&result, |caps: &Captures| redact_value(&caps[0]))
+        .to_string();
+
+    result = DEVIN_SESSION_RE
+        .replace_all(&result, |caps: &Captures| redact_value(&caps[0]))
+        .to_string();
+
+    result = ACCOUNT_RE
+        .replace_all(&result, |caps: &Captures| {
+            format!("{}{}", &caps[1], redact_value(&caps[2]))
+        })
+        .to_string();
+
+    result = PATH_RE.replace_all(&result, "[PATH]").to_string();
+
     result
 }
 
@@ -239,6 +257,43 @@ mod tests {
     fn redact_url_preserves_non_sensitive_params() {
         let url = "https://api.example.com/v1?limit=10&offset=20";
         assert_eq!(redact_url(url), url);
+    }
+
+    #[test]
+    fn redact_url_does_not_false_positive_author() {
+        let url = "https://api.example.com/v1?author=robin&authority=admin";
+        let redacted = redact_url(url);
+        assert!(
+            redacted.contains("author=robin"),
+            "author should NOT be redacted (not sensitive), got: {}",
+            redacted
+        );
+        assert!(
+            redacted.contains("authority=admin"),
+            "authority should NOT be redacted, got: {}",
+            redacted
+        );
+    }
+
+    #[test]
+    fn redact_url_redacts_oauth_params() {
+        let url = "https://api.example.com/oauth/callback?client_id=abc123&code=AUTH_CODE_xyz&state=xyz123";
+        let redacted = redact_url(url);
+        assert!(
+            !redacted.contains("abc123"),
+            "client_id should be redacted, got: {}",
+            redacted
+        );
+        assert!(
+            !redacted.contains("AUTH_CODE_xyz"),
+            "code should be redacted, got: {}",
+            redacted
+        );
+        assert!(
+            !redacted.contains("state=xyz123"),
+            "state should be redacted, got: {}",
+            redacted
+        );
     }
 
     #[test]
@@ -529,24 +584,18 @@ mod tests {
     }
 
     #[test]
-    fn redact_body_redacts_name_field() {
+    fn redact_body_preserves_name_field_but_redacts_email() {
         let body =
             r#"{"userStatus":{"name":"Robin Ebers","email":"rob@sunstory.com","planStatus":{}}}"#;
         let redacted = redact_body(body);
         assert!(
-            !redacted.contains("Robin Ebers"),
-            "name should be redacted, got: {}",
+            redacted.contains("Robin Ebers"),
+            "name should NOT be redacted (not sensitive), got: {}",
             redacted
         );
         assert!(
             !redacted.contains("rob@sunstory.com"),
-            "email should be redacted, got: {}",
-            redacted
-        );
-        // "Robin Ebers" is 11 chars (<=12) so becomes [REDACTED]
-        assert!(
-            redacted.contains("\"name\": \"[REDACTED]\""),
-            "name should show [REDACTED], got: {}",
+            "email should still be redacted, got: {}",
             redacted
         );
     }

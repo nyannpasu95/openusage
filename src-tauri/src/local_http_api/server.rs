@@ -298,7 +298,7 @@ fn route_options(cors_origin: Option<&str>) -> String {
 
 fn handle_get_usage_collection(cors_origin: Option<&str>) -> String {
     let snapshots = {
-        let state = cache_state().lock().expect("cache state poisoned");
+        let state = cache_state().lock().unwrap_or_else(|e| e.into_inner());
         enabled_snapshots_ordered(&state)
     };
     let body = serde_json::to_string(&snapshots).unwrap_or_else(|_| "[]".to_string());
@@ -306,7 +306,7 @@ fn handle_get_usage_collection(cors_origin: Option<&str>) -> String {
 }
 
 fn handle_get_usage_single(provider_id: &str, cors_origin: Option<&str>) -> String {
-    let state = cache_state().lock().expect("cache state poisoned");
+    let state = cache_state().lock().unwrap_or_else(|e| e.into_inner());
 
     let is_known = state.known_plugin_ids.iter().any(|id| id == provider_id);
     if !is_known {

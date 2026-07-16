@@ -21,7 +21,7 @@ if (!VERSION_RE.test(version)) {
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 
-const hostApiPath = path.join(repoRoot, "src-tauri/src/plugin_engine/host_api.rs");
+const hostApiPath = path.join(repoRoot, "src-tauri/src/plugin_engine/host_api/ccusage.rs");
 const docsPath = path.join(repoRoot, "docs/plugins/api.md");
 
 function replaceOnce(content, regex, replacement, missingMessage) {
@@ -36,14 +36,14 @@ const currentVersionMatch = hostApiSource.match(
   /const CCUSAGE_VERSION: &str = "(\d+\.\d+\.\d+)";/,
 );
 if (!currentVersionMatch) {
-  fail("could not find CCUSAGE_VERSION constant in host_api.rs");
+    fail("could not find CCUSAGE_VERSION constant in host_api/ccusage.rs");
 }
 const currentVersion = currentVersionMatch[1];
 const updatedHostApiSource = replaceOnce(
   hostApiSource,
   /const CCUSAGE_VERSION: &str = "\d+\.\d+\.\d+";/,
   `const CCUSAGE_VERSION: &str = "${version}";`,
-  "could not find CCUSAGE_VERSION constant in host_api.rs",
+    "could not find CCUSAGE_VERSION constant in host_api/ccusage.rs",
 );
 writeFileSync(hostApiPath, updatedHostApiSource);
 
