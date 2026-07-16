@@ -195,9 +195,7 @@ fn mark_cache_flushed(generation: u64) {
 }
 
 fn flush_pending_cache_once() -> CacheFlushResult {
-    let _write_guard = cache_write_lock()
-        .lock()
-        .unwrap_or_else(|e| e.into_inner());
+    let _write_guard = cache_write_lock().lock().unwrap_or_else(|e| e.into_inner());
     let Some((generation, app_data_dir, snapshots)) = pending_cache_write() else {
         return CacheFlushResult::Idle;
     };

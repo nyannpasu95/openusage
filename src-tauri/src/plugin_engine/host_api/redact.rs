@@ -143,8 +143,7 @@ pub(crate) fn redact_url(url: &str) -> String {
                     let (name, value) = param.split_at(eq_pos);
                     let value = &value[1..]; // skip '='
                     let name_lower = name.to_lowercase();
-                    if sensitive_params.iter().any(|s| name_lower == *s) && !value.is_empty()
-                    {
+                    if sensitive_params.iter().any(|s| name_lower == *s) && !value.is_empty() {
                         format!("{}={}", name, redact_value(value))
                     } else {
                         param.to_string()

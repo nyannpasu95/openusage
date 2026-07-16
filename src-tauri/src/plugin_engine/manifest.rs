@@ -53,7 +53,11 @@ pub fn load_plugins_from_dir(plugins_dir: &std::path::Path) -> Vec<LoadedPlugin>
     let entries = match std::fs::read_dir(plugins_dir) {
         Ok(e) => e,
         Err(e) => {
-            log::error!("failed to read plugins dir {}: {}", plugins_dir.display(), e);
+            log::error!(
+                "failed to read plugins dir {}: {}",
+                plugins_dir.display(),
+                e
+            );
             return plugins;
         }
     };
