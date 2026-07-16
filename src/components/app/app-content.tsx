@@ -1,7 +1,8 @@
+import { lazy, Suspense } from "react"
 import { useShallow } from "zustand/react/shallow"
+import { Skeleton } from "@/components/ui/skeleton"
 import { OverviewPage } from "@/pages/overview"
 import { ProviderDetailPage } from "@/pages/provider-detail"
-import { SettingsPage } from "@/pages/settings"
 import type { DisplayPluginState } from "@/hooks/app/use-app-plugin-views"
 import type { SettingsPluginState } from "@/hooks/app/use-settings-plugin-list"
 import type { TraySettingsPreview } from "@/hooks/app/use-tray-icon"
@@ -17,6 +18,20 @@ import type {
   ThemeMode,
   TimeFormatMode,
 } from "@/lib/settings"
+
+const SettingsPage = lazy(() =>
+  import("@/pages/settings").then((module) => ({ default: module.SettingsPage }))
+)
+
+function SettingsFallback() {
+  return (
+    <div aria-label="Loading Settings" className="space-y-3 py-1">
+      <Skeleton className="h-5 w-24" />
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-24 w-full" />
+    </div>
+  )
+}
 
 type AppContentDerivedProps = {
   displayPlugins: DisplayPluginState[]
@@ -111,32 +126,34 @@ export function AppContent({
 
   if (activeView === "settings") {
     return (
-      <SettingsPage
-        plugins={settingsPlugins}
-        onReorder={onReorder}
-        onToggle={onToggle}
-        autoUpdateInterval={autoUpdateInterval}
-        onAutoUpdateIntervalChange={onAutoUpdateIntervalChange}
-        themeMode={themeMode}
-        onThemeModeChange={onThemeModeChange}
-        displayMode={displayMode}
-        onDisplayModeChange={onDisplayModeChange}
-        resetTimerDisplayMode={resetTimerDisplayMode}
-        onResetTimerDisplayModeChange={onResetTimerDisplayModeChange}
-        timeFormatMode={timeFormatMode}
-        onTimeFormatModeChange={onTimeFormatModeChange}
-        menubarIconStyle={menubarIconStyle}
-        onMenubarIconStyleChange={onMenubarIconStyleChange}
-        menubarMetric={menubarMetric}
-        onMenubarMetricChange={onMenubarMetricChange}
-        traySettingsPreview={traySettingsPreview}
-        globalShortcut={globalShortcut}
-        onGlobalShortcutChange={onGlobalShortcutChange}
-        startOnLogin={startOnLogin}
-        onStartOnLoginChange={onStartOnLoginChange}
-        lowUsageAlerts={lowUsageAlerts}
-        onLowUsageAlertsChange={onLowUsageAlertsChange}
-      />
+      <Suspense fallback={<SettingsFallback />}>
+        <SettingsPage
+          plugins={settingsPlugins}
+          onReorder={onReorder}
+          onToggle={onToggle}
+          autoUpdateInterval={autoUpdateInterval}
+          onAutoUpdateIntervalChange={onAutoUpdateIntervalChange}
+          themeMode={themeMode}
+          onThemeModeChange={onThemeModeChange}
+          displayMode={displayMode}
+          onDisplayModeChange={onDisplayModeChange}
+          resetTimerDisplayMode={resetTimerDisplayMode}
+          onResetTimerDisplayModeChange={onResetTimerDisplayModeChange}
+          timeFormatMode={timeFormatMode}
+          onTimeFormatModeChange={onTimeFormatModeChange}
+          menubarIconStyle={menubarIconStyle}
+          onMenubarIconStyleChange={onMenubarIconStyleChange}
+          menubarMetric={menubarMetric}
+          onMenubarMetricChange={onMenubarMetricChange}
+          traySettingsPreview={traySettingsPreview}
+          globalShortcut={globalShortcut}
+          onGlobalShortcutChange={onGlobalShortcutChange}
+          startOnLogin={startOnLogin}
+          onStartOnLoginChange={onStartOnLoginChange}
+          lowUsageAlerts={lowUsageAlerts}
+          onLowUsageAlertsChange={onLowUsageAlertsChange}
+        />
+      </Suspense>
     )
   }
 

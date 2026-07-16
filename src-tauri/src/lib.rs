@@ -523,7 +523,12 @@ fn list_plugins(state: tauri::State<'_, Mutex<AppState>>) -> Vec<PluginMeta> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let runtime = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+    // Aptabase starts its polling loop with tokio::spawn while the plugin is
+    // constructed, before Tauri enters its setup hook. Enter one runtime here
+    // and register the same handle with Tauri so both use a single executor.
+    let runtime = tauri::async_runtime::TokioRuntime::new()
+        .expect("Failed to create the application async runtime");
+    tauri::async_runtime::set(runtime.handle().clone());
     let _guard = runtime.enter();
 
     tauri::Builder::default()

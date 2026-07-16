@@ -63,6 +63,19 @@ type UseSettingsBootstrapArgs = {
   startBatch: (pluginIds?: string[]) => Promise<string[] | undefined>
 }
 
+async function loadSetting<T>(
+  loader: () => Promise<T>,
+  fallback: T,
+  label: string,
+): Promise<T> {
+  try {
+    return await loader()
+  } catch (error) {
+    console.error(`Failed to load ${label}:`, error)
+    return fallback
+  }
+}
+
 export function useSettingsBootstrap({
   setPluginSettings,
   setPluginsMeta,
@@ -98,71 +111,41 @@ export function useSettingsBootstrap({
 
     const loadSettings = async () => {
       try {
-        const availablePlugins = await invoke<PluginMeta[]>("list_plugins")
+        const [
+          availablePlugins,
+          storedSettings,
+          storedInterval,
+          storedThemeMode,
+          storedDisplayMode,
+          storedResetTimerDisplayMode,
+          storedTimeFormatMode,
+          storedGlobalShortcut,
+          storedStartOnLogin,
+          storedLowUsageAlerts,
+        ] = await Promise.all([
+          invoke<PluginMeta[]>("list_plugins"),
+          loadPluginSettings(),
+          loadSetting(loadAutoUpdateInterval, DEFAULT_AUTO_UPDATE_INTERVAL, "auto-update interval"),
+          loadSetting(loadThemeMode, DEFAULT_THEME_MODE, "theme mode"),
+          loadSetting(loadDisplayMode, DEFAULT_DISPLAY_MODE, "display mode"),
+          loadSetting(
+            loadResetTimerDisplayMode,
+            DEFAULT_RESET_TIMER_DISPLAY_MODE,
+            "reset timer display mode",
+          ),
+          loadSetting(loadTimeFormatMode, DEFAULT_TIME_FORMAT_MODE, "time format mode"),
+          loadSetting(loadGlobalShortcut, DEFAULT_GLOBAL_SHORTCUT, "global shortcut"),
+          loadSetting(loadStartOnLogin, DEFAULT_START_ON_LOGIN, "start on login"),
+          loadSetting(loadLowUsageAlerts, DEFAULT_LOW_USAGE_ALERTS, "low usage alerts"),
+        ])
+
         if (!isMounted) return
         setPluginsMeta(availablePlugins)
 
-        const storedSettings = await loadPluginSettings()
         const migratedSettings = migrateWindsurfToDevin(storedSettings)
         const normalized = normalizePluginSettings(migratedSettings, availablePlugins)
         if (!arePluginSettingsEqual(storedSettings, normalized)) {
           await savePluginSettings(normalized)
-        }
-
-        let storedInterval = DEFAULT_AUTO_UPDATE_INTERVAL
-        try {
-          storedInterval = await loadAutoUpdateInterval()
-        } catch (error) {
-          console.error("Failed to load auto-update interval:", error)
-        }
-
-        let storedThemeMode = DEFAULT_THEME_MODE
-        try {
-          storedThemeMode = await loadThemeMode()
-        } catch (error) {
-          console.error("Failed to load theme mode:", error)
-        }
-
-        let storedDisplayMode = DEFAULT_DISPLAY_MODE
-        try {
-          storedDisplayMode = await loadDisplayMode()
-        } catch (error) {
-          console.error("Failed to load display mode:", error)
-        }
-
-        let storedResetTimerDisplayMode = DEFAULT_RESET_TIMER_DISPLAY_MODE
-        try {
-          storedResetTimerDisplayMode = await loadResetTimerDisplayMode()
-        } catch (error) {
-          console.error("Failed to load reset timer display mode:", error)
-        }
-
-        let storedTimeFormatMode = DEFAULT_TIME_FORMAT_MODE
-        try {
-          storedTimeFormatMode = await loadTimeFormatMode()
-        } catch (error) {
-          console.error("Failed to load time format mode:", error)
-        }
-
-        let storedGlobalShortcut = DEFAULT_GLOBAL_SHORTCUT
-        try {
-          storedGlobalShortcut = await loadGlobalShortcut()
-        } catch (error) {
-          console.error("Failed to load global shortcut:", error)
-        }
-
-        let storedStartOnLogin = DEFAULT_START_ON_LOGIN
-        try {
-          storedStartOnLogin = await loadStartOnLogin()
-        } catch (error) {
-          console.error("Failed to load start on login:", error)
-        }
-
-        let storedLowUsageAlerts = DEFAULT_LOW_USAGE_ALERTS
-        try {
-          storedLowUsageAlerts = await loadLowUsageAlerts()
-        } catch (error) {
-          console.error("Failed to load low usage alerts:", error)
         }
 
         try {
@@ -176,19 +159,10 @@ export function useSettingsBootstrap({
           console.error("Failed to migrate legacy tray settings:", error)
         }
 
-        let storedMenubarIconStyle = DEFAULT_MENUBAR_ICON_STYLE
-        try {
-          storedMenubarIconStyle = await loadMenubarIconStyle()
-        } catch (error) {
-          console.error("Failed to load menubar icon style:", error)
-        }
-
-        let storedMenubarMetric = DEFAULT_MENUBAR_METRIC
-        try {
-          storedMenubarMetric = await loadMenubarMetric()
-        } catch (error) {
-          console.error("Failed to load menubar metric:", error)
-        }
+        const [storedMenubarIconStyle, storedMenubarMetric] = await Promise.all([
+          loadSetting(loadMenubarIconStyle, DEFAULT_MENUBAR_ICON_STYLE, "menubar icon style"),
+          loadSetting(loadMenubarMetric, DEFAULT_MENUBAR_METRIC, "menubar metric"),
+        ])
 
         if (isMounted) {
           setPluginSettings(normalized)

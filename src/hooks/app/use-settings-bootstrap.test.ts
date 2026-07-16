@@ -178,6 +178,36 @@ describe("useSettingsBootstrap", () => {
     expect(enableAutostartMock).not.toHaveBeenCalled()
   })
 
+  it("loads independent startup settings concurrently", async () => {
+    let resolvePluginSettings!: (settings: { order: string[]; disabled: string[] }) => void
+    loadPluginSettingsMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePluginSettings = resolve
+      })
+    )
+    const args = createArgs()
+
+    renderHook(() => useSettingsBootstrap(args))
+
+    await waitFor(() => {
+      expect(loadAutoUpdateIntervalMock).toHaveBeenCalledTimes(1)
+      expect(loadThemeModeMock).toHaveBeenCalledTimes(1)
+      expect(loadDisplayModeMock).toHaveBeenCalledTimes(1)
+      expect(loadResetTimerDisplayModeMock).toHaveBeenCalledTimes(1)
+      expect(loadTimeFormatModeMock).toHaveBeenCalledTimes(1)
+      expect(loadGlobalShortcutMock).toHaveBeenCalledTimes(1)
+      expect(loadStartOnLoginMock).toHaveBeenCalledTimes(1)
+      expect(loadLowUsageAlertsMock).toHaveBeenCalledTimes(1)
+    })
+    expect(args.startBatch).not.toHaveBeenCalled()
+
+    resolvePluginSettings({ order: ["codex"], disabled: [] })
+
+    await waitFor(() => {
+      expect(args.startBatch).toHaveBeenCalledWith(["codex"])
+    })
+  })
+
   it("falls back to default reset timer mode when loading fails", async () => {
     const resetModeError = new Error("reset timer mode unavailable")
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})

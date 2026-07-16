@@ -54,6 +54,7 @@ OhMyUsage version:
 ## Privacy note
 
 Logs are redacted for common secrets, but still review before sharing in public.
+Debug and Trace logs include a short, redacted preview of provider responses. Lower log levels only record request status and response size.
 
 ## Optional: switch log level back
 

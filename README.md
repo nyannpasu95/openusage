@@ -111,7 +111,7 @@ bun tauri dev        # run the app in development
 bun tauri build      # produce a release build (DMG + .app)
 ```
 
-Plugin sources live under `plugins/` and are copied into `src-tauri/resources/bundled_plugins/` automatically by the `beforeDevCommand` / `beforeBuildCommand` hooks.
+Plugin sources live under `plugins/`. The `beforeDevCommand` / `beforeBuildCommand` hooks copy each plugin's manifest, declared entry script, and declared icon into `src-tauri/resources/bundled_plugins/`; test files stay out of the app bundle.
 
 To run the test suites:
 
