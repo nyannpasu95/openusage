@@ -8,32 +8,30 @@ use std::path::{Path, PathBuf};
 const RETIRED_BUNDLED_PLUGIN_IDS: &[&str] = &["windsurf"];
 
 pub fn initialize_plugins(
-    app_data_dir: &Path,
+    _app_data_dir: &Path,
     resource_dir: &Path,
 ) -> (PathBuf, Vec<LoadedPlugin>) {
+    // In debug builds, load plugins from the current directory (dev workflow).
+    // Packaged builds load directly from the read-only bundled resource directory.
+    #[cfg(debug_assertions)]
     if let Some(dev_dir) = find_dev_plugins_dir()
-        && !is_dir_empty(&dev_dir) {
-            let plugins = load_active_plugins_from_dir(&dev_dir);
-            return (dev_dir, plugins);
-        }
-
-    let install_dir = app_data_dir.join("plugins");
-    if let Err(err) = std::fs::create_dir_all(&install_dir) {
-        log::warn!(
-            "failed to create install dir {}: {}",
-            install_dir.display(),
-            err
-        );
+        && !is_dir_empty(&dev_dir)
+    {
+        let plugins = load_active_plugins_from_dir(&dev_dir);
+        return (dev_dir, plugins);
     }
 
     let bundled_dir = resolve_bundled_dir(resource_dir);
-    if bundled_dir.exists() {
-        copy_dir_recursive(&bundled_dir, &install_dir);
-        remove_retired_bundled_plugins(&install_dir);
+    if !bundled_dir.is_dir() {
+        log::error!(
+            "bundled plugin directory is missing: {}",
+            bundled_dir.display()
+        );
+        return (bundled_dir, Vec::new());
     }
 
-    let plugins = load_active_plugins_from_dir(&install_dir);
-    (install_dir, plugins)
+    let plugins = load_active_plugins_from_dir(&bundled_dir);
+    (bundled_dir, plugins)
 }
 
 fn load_active_plugins_from_dir(plugins_dir: &Path) -> Vec<LoadedPlugin> {
@@ -47,6 +45,7 @@ fn is_retired_bundled_plugin_id(id: &str) -> bool {
     RETIRED_BUNDLED_PLUGIN_IDS.contains(&id)
 }
 
+#[cfg(debug_assertions)]
 fn find_dev_plugins_dir() -> Option<PathBuf> {
     let cwd = std::env::current_dir().ok()?;
     let direct = cwd.join("plugins");
@@ -69,93 +68,13 @@ fn resolve_bundled_dir(resource_dir: &Path) -> PathBuf {
     }
 }
 
+#[cfg(debug_assertions)]
 fn is_dir_empty(path: &Path) -> bool {
     match std::fs::read_dir(path) {
         Ok(mut entries) => entries.next().is_none(),
         Err(err) => {
             log::warn!("failed to read dir {}: {}", path.display(), err);
             true
-        }
-    }
-}
-
-fn remove_retired_bundled_plugins(install_dir: &Path) {
-    for id in RETIRED_BUNDLED_PLUGIN_IDS {
-        let plugin_dir = install_dir.join(id);
-        if !plugin_dir.is_dir() || !plugin_dir_has_id(&plugin_dir, id) {
-            continue;
-        }
-
-        if let Err(err) = std::fs::remove_dir_all(&plugin_dir) {
-            log::warn!(
-                "failed to remove retired bundled plugin {}: {}",
-                plugin_dir.display(),
-                err
-            );
-        }
-    }
-}
-
-fn plugin_dir_has_id(plugin_dir: &Path, expected_id: &str) -> bool {
-    let manifest_path = plugin_dir.join("plugin.json");
-    let Ok(text) = std::fs::read_to_string(&manifest_path) else {
-        return false;
-    };
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
-        return false;
-    };
-    value
-        .get("id")
-        .and_then(|id| id.as_str())
-        .is_some_and(|id| id == expected_id)
-}
-
-fn copy_dir_recursive(src: &Path, dst: &Path) {
-    match std::fs::read_dir(src) {
-        Ok(entries) => {
-            for entry in entries {
-                let entry = match entry {
-                    Ok(entry) => entry,
-                    Err(err) => {
-                        log::warn!("failed to read entry in {}: {}", src.display(), err);
-                        continue;
-                    }
-                };
-                let src_path = entry.path();
-                let dst_path = dst.join(entry.file_name());
-                let file_type = match entry.file_type() {
-                    Ok(file_type) => file_type,
-                    Err(err) => {
-                        log::warn!(
-                            "failed to read file type for {}: {}",
-                            src_path.display(),
-                            err
-                        );
-                        continue;
-                    }
-                };
-                if file_type.is_symlink() {
-                    continue;
-                }
-                if file_type.is_dir() {
-                    if let Err(err) = std::fs::create_dir_all(&dst_path) {
-                        log::warn!("failed to create dir {}: {}", dst_path.display(), err);
-                        continue;
-                    }
-                    copy_dir_recursive(&src_path, &dst_path);
-                } else if file_type.is_file()
-                    && let Err(err) = std::fs::copy(&src_path, &dst_path) {
-                        log::warn!(
-                            "failed to copy {} to {}: {}",
-                            src_path.display(),
-                            dst_path.display(),
-                            err
-                        );
-                    }
-            }
-        }
-        Err(err) => {
-            log::warn!("failed to read dir {}: {}", src.display(), err);
         }
     }
 }
@@ -257,16 +176,14 @@ mod tests {
 
     #[test]
     #[serial]
-    fn initialize_plugins_removes_retired_windsurf_without_removing_custom_plugins() {
-        let root = TempDir::new("retired");
+    fn initialize_plugins_loads_only_bundled_plugins() {
+        let root = TempDir::new("bundled-only");
         let _cwd = CurrentDirGuard::enter(root.path());
         let app_data_dir = root.path().join("app-data");
-        let install_dir = app_data_dir.join("plugins");
         let resource_dir = root.path().join("resources");
         let bundled_dir = resource_dir.join("bundled_plugins");
 
-        write_plugin(&install_dir, "windsurf", "Windsurf");
-        write_plugin(&install_dir, "custom", "Custom");
+        write_plugin(&app_data_dir.join("plugins"), "custom", "Custom");
         write_plugin(&bundled_dir, "devin", "Devin");
 
         let (loaded_dir, plugins) = initialize_plugins(&app_data_dir, &resource_dir);
@@ -275,29 +192,27 @@ mod tests {
             .map(|plugin| plugin.manifest.id.as_str())
             .collect();
 
-        assert_eq!(loaded_dir, install_dir);
-        assert!(!loaded_dir.join("windsurf").exists());
-        assert!(loaded_dir.join("custom").exists());
-        assert!(loaded_dir.join("devin").exists());
-        assert_eq!(ids, vec!["custom", "devin"]);
+        assert_eq!(loaded_dir, bundled_dir);
+        assert!(!loaded_dir.join("custom").exists());
+        assert_eq!(ids, vec!["devin"]);
     }
 
     #[test]
     #[serial]
-    fn initialize_plugins_skips_retired_plugin_even_when_cleanup_does_not_remove_it() {
+    fn initialize_plugins_skips_retired_bundled_plugin() {
         let root = TempDir::new("retired-skip");
         let _cwd = CurrentDirGuard::enter(root.path());
         let app_data_dir = root.path().join("app-data");
         let install_dir = app_data_dir.join("plugins");
         let resource_dir = root.path().join("resources");
-        fs::create_dir_all(&resource_dir).expect("create resource dir");
+        let bundled_dir = resource_dir.join("bundled_plugins");
 
-        let mismatched_dir = install_dir.join("legacy-name");
-        write_plugin_at(&mismatched_dir, "windsurf", "Windsurf");
+        write_plugin(&install_dir, "custom", "Custom");
+        write_plugin(&bundled_dir, "windsurf", "Windsurf");
 
-        let (_loaded_dir, plugins) = initialize_plugins(&app_data_dir, &resource_dir);
+        let (loaded_dir, plugins) = initialize_plugins(&app_data_dir, &resource_dir);
 
-        assert!(mismatched_dir.exists());
+        assert_eq!(loaded_dir, bundled_dir);
         assert!(plugins.is_empty());
     }
 }

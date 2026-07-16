@@ -286,4 +286,3 @@ pub fn inject_utils(ctx: &rquickjs::Ctx<'_>) -> rquickjs::Result<()> {
         .as_bytes(),
     )
 }
-

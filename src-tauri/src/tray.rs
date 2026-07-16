@@ -218,22 +218,23 @@ pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
             if let TrayIconEvent::Click {
                 button_state, rect, ..
             } = event
-                && button_state == MouseButtonState::Up {
-                    let Some(panel) = get_or_init_panel!(app_handle) else {
-                        return;
-                    };
+                && button_state == MouseButtonState::Up
+            {
+                let Some(panel) = get_or_init_panel!(app_handle) else {
+                    return;
+                };
 
-                    if panel.is_visible() {
-                        log::debug!("tray click: hiding panel");
-                        panel.hide();
-                        return;
-                    }
-                    log::debug!("tray click: showing panel");
-
-                    // macOS quirk: must show window before positioning to another monitor
-                    panel.show_and_make_key();
-                    position_panel_at_tray_icon(app_handle, rect.position, rect.size);
+                if panel.is_visible() {
+                    log::debug!("tray click: hiding panel");
+                    panel.hide();
+                    return;
                 }
+                log::debug!("tray click: showing panel");
+
+                // macOS quirk: must show window before positioning to another monitor
+                panel.show_and_make_key();
+                position_panel_at_tray_icon(app_handle, rect.position, rect.size);
+            }
         })
         .build(app_handle)?;
 

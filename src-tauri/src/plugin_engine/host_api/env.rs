@@ -38,7 +38,11 @@ pub(crate) fn sanitize_env_value(text: &str) -> Option<String> {
     last_non_empty_trimmed_line(&cleaned)
 }
 
-pub(crate) fn extract_marked_value(text: &str, start_marker: &str, end_marker: &str) -> Option<String> {
+pub(crate) fn extract_marked_value(
+    text: &str,
+    start_marker: &str,
+    end_marker: &str,
+) -> Option<String> {
     let start = text.find(start_marker)?;
     let after_start = &text[start + start_marker.len()..];
     let end = after_start.find(end_marker)?;
@@ -79,7 +83,6 @@ pub(crate) fn read_env_value_via_command(program: &str, args: &[&str]) -> Option
     let stdout = read_command_stdout(program, args)?;
     sanitize_env_value(&stdout)
 }
-
 
 pub(crate) fn terminal_env_cache() -> &'static Mutex<HashMap<String, Option<String>>> {
     static CACHE: OnceLock<Mutex<HashMap<String, Option<String>>>> = OnceLock::new();
@@ -148,9 +151,10 @@ pub(crate) fn resolve_env_value(name: &str) -> Option<String> {
     }
 
     if let Ok(cache) = terminal_env_cache().lock()
-        && let Some(cached) = cache.get(name) {
-            return cached.clone();
-        }
+        && let Some(cached) = cache.get(name)
+    {
+        return cached.clone();
+    }
 
     let resolved = read_env_from_interactive_shells(name);
     if let Ok(mut cache) = terminal_env_cache().lock() {
@@ -159,7 +163,11 @@ pub(crate) fn resolve_env_value(name: &str) -> Option<String> {
     resolved
 }
 
-pub(crate) fn inject_env<'js>(ctx: &Ctx<'js>, host: &Object<'js>, _plugin_id: &str) -> rquickjs::Result<()> {
+pub(crate) fn inject_env<'js>(
+    ctx: &Ctx<'js>,
+    host: &Object<'js>,
+    _plugin_id: &str,
+) -> rquickjs::Result<()> {
     let env_obj = Object::new(ctx.clone())?;
     env_obj.set(
         "get",
@@ -174,7 +182,6 @@ pub(crate) fn inject_env<'js>(ctx: &Ctx<'js>, host: &Object<'js>, _plugin_id: &s
     host.set("env", env_obj)?;
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -381,5 +388,4 @@ mod tests {
             );
         });
     }
-
 }

@@ -96,4 +96,3 @@ pub(crate) fn inject_sqlite<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs
     host.set("sqlite", sqlite_obj)?;
     Ok(())
 }
-

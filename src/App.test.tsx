@@ -32,7 +32,10 @@ const state = vi.hoisted(() => ({
   autostartDisableMock: vi.fn(),
   autostartIsEnabledMock: vi.fn(),
   renderTrayBarsIconMock: vi.fn(),
-  probeHandlers: null as null | { onResult: (output: any) => void; onBatchComplete: () => void },
+  probeHandlers: null as null | {
+    onResult: (output: any, batchId?: string) => void
+    onBatchComplete: (batchId?: string) => void
+  },
   trayGetByIdMock: vi.fn(),
   traySetIconMock: vi.fn(),
   traySetIconAsTemplateMock: vi.fn(),
@@ -209,8 +212,14 @@ vi.mock("@/lib/tray-bars-icon", async () => {
 })
 
 vi.mock("@/hooks/use-probe-events", () => ({
-  useProbeEvents: (handlers: { onResult: (output: any) => void; onBatchComplete: () => void }) => {
-    state.probeHandlers = handlers
+  useProbeEvents: (handlers: {
+    onResult: (output: any, batchId: string) => void
+    onBatchComplete: (batchId: string) => void
+  }) => {
+    state.probeHandlers = {
+      onResult: (output, batchId = "test-batch") => handlers.onResult(output, batchId),
+      onBatchComplete: (batchId = "test-batch") => handlers.onBatchComplete(batchId),
+    }
     return { startBatch: state.startBatchMock }
   },
 }))
@@ -340,8 +349,8 @@ describe("App", () => {
     state.invokeMock.mockImplementation(async (cmd: string) => {
       if (cmd === "list_plugins") {
         return [
-          { id: "a", name: "Alpha", iconUrl: "icon-a", primaryProgressLabel: null, lines: [{ type: "text", label: "Now", scope: "overview" }] },
-          { id: "b", name: "Beta", iconUrl: "icon-b", primaryProgressLabel: null, lines: [] },
+          { id: "a", name: "Alpha", iconUrl: "icon-a", primaryCandidates: ["Session"], lines: [{ type: "text", label: "Now", scope: "overview" }] },
+          { id: "b", name: "Beta", iconUrl: "icon-b", primaryCandidates: [], lines: [] },
         ]
       }
       return null
@@ -697,6 +706,295 @@ describe("App", () => {
       expect(latestCall.providerIconUrl).toBe("icon-b")
     })
     await waitFor(() => expect(state.traySetTitleMock).toHaveBeenCalledWith("70%"))
+  })
+
+  it("auto-selects the provider with the largest usage increase after a batch", async () => {
+    state.invokeMock.mockImplementation(async (cmd: string) => {
+      if (cmd === "list_plugins") {
+        return [
+          {
+            id: "a",
+            name: "Alpha",
+            iconUrl: "icon-a",
+            primaryCandidates: ["Session"],
+            lines: [{ type: "progress", label: "Session", scope: "overview" }],
+          },
+          {
+            id: "b",
+            name: "Beta",
+            iconUrl: "icon-b",
+            primaryCandidates: ["Session"],
+            lines: [{ type: "progress", label: "Session", scope: "overview" }],
+          },
+        ]
+      }
+      return null
+    })
+    state.loadPluginSettingsMock.mockResolvedValueOnce({ order: ["a", "b"], disabled: [] })
+
+    render(<App />)
+    await waitFor(() => expect(state.startBatchMock).toHaveBeenCalled())
+
+    state.probeHandlers?.onResult({
+      providerId: "a",
+      displayName: "Alpha",
+      iconUrl: "icon-a",
+      lines: [{ type: "progress", label: "Session", used: 10, limit: 100, format: { kind: "percent" } }],
+    }, "baseline")
+    state.probeHandlers?.onResult({
+      providerId: "b",
+      displayName: "Beta",
+      iconUrl: "icon-b",
+      lines: [{ type: "progress", label: "Session", used: 20, limit: 100, format: { kind: "percent" } }],
+    }, "baseline")
+    state.probeHandlers?.onBatchComplete("baseline")
+
+    await waitFor(() => {
+      const latestCall = state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0]
+      expect(latestCall.providerIconUrl).toBe("icon-a")
+    })
+
+    // Beta returns first and has the larger normalized increase. Alpha returns
+    // last to prove that completion order does not decide the selected provider.
+    state.probeHandlers?.onResult({
+      providerId: "b",
+      displayName: "Beta",
+      iconUrl: "icon-b",
+      lines: [{ type: "progress", label: "Session", used: 30, limit: 100, format: { kind: "percent" } }],
+    }, "changed")
+    state.probeHandlers?.onResult({
+      providerId: "a",
+      displayName: "Alpha",
+      iconUrl: "icon-a",
+      lines: [{ type: "progress", label: "Session", used: 12, limit: 100, format: { kind: "percent" } }],
+    }, "changed")
+    state.probeHandlers?.onBatchComplete("changed")
+
+    await waitFor(() => {
+      const latestCall = state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0]
+      expect(latestCall.providerIconUrl).toBe("icon-b")
+    })
+    await waitFor(() => expect(state.traySetTitleMock).toHaveBeenCalledWith("70%"))
+  })
+
+  it("retains auto-selection across unchanged probes and allows later manual and automatic overrides", async () => {
+    state.invokeMock.mockImplementation(async (cmd: string) => {
+      if (cmd === "list_plugins") {
+        return [
+          {
+            id: "a",
+            name: "Alpha",
+            iconUrl: "icon-a",
+            primaryCandidates: ["Session"],
+            lines: [{ type: "progress", label: "Session", scope: "overview" }],
+          },
+          {
+            id: "b",
+            name: "Beta",
+            iconUrl: "icon-b",
+            primaryCandidates: ["Session"],
+            lines: [{ type: "progress", label: "Session", scope: "overview" }],
+          },
+        ]
+      }
+      return null
+    })
+    state.loadPluginSettingsMock.mockResolvedValueOnce({ order: ["a", "b"], disabled: [] })
+
+    render(<App />)
+    await waitFor(() => expect(state.startBatchMock).toHaveBeenCalled())
+
+    const result = (providerId: "a" | "b", used: number, batchId: string) => {
+      state.probeHandlers?.onResult({
+        providerId,
+        displayName: providerId === "a" ? "Alpha" : "Beta",
+        iconUrl: providerId === "a" ? "icon-a" : "icon-b",
+        lines: [{ type: "progress", label: "Session", used, limit: 100, format: { kind: "percent" } }],
+      }, batchId)
+    }
+
+    result("a", 10, "baseline")
+    result("b", 20, "baseline")
+    state.probeHandlers?.onBatchComplete("baseline")
+    result("b", 30, "auto-b")
+    state.probeHandlers?.onBatchComplete("auto-b")
+    await waitFor(() => {
+      expect(state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0].providerIconUrl).toBe("icon-b")
+    })
+
+    const callsBeforeUnchangedBatch = state.renderTrayBarsIconMock.mock.calls.length
+    result("a", 10, "unchanged")
+    result("b", 30, "unchanged")
+    state.probeHandlers?.onBatchComplete("unchanged")
+    await waitFor(() => {
+      expect(state.renderTrayBarsIconMock.mock.calls.length).toBeGreaterThan(callsBeforeUnchangedBatch)
+      expect(state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0].providerIconUrl).toBe("icon-b")
+    })
+
+    await userEvent.click(screen.getByRole("button", { name: "Alpha" }))
+    await waitFor(() => {
+      expect(state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0].providerIconUrl).toBe("icon-a")
+    })
+
+    result("b", 35, "auto-b-again")
+    state.probeHandlers?.onBatchComplete("auto-b-again")
+    await waitFor(() => {
+      expect(state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0].providerIconUrl).toBe("icon-b")
+    })
+    expect(screen.getByText("Alpha")).toBeInTheDocument()
+  })
+
+  it("does not auto-select a provider when its usage decreases", async () => {
+    state.invokeMock.mockImplementation(async (cmd: string) => {
+      if (cmd === "list_plugins") {
+        return [
+          {
+            id: "a",
+            name: "Alpha",
+            iconUrl: "icon-a",
+            primaryCandidates: ["Session"],
+            lines: [{ type: "progress", label: "Session", scope: "overview" }],
+          },
+          {
+            id: "b",
+            name: "Beta",
+            iconUrl: "icon-b",
+            primaryCandidates: ["Session"],
+            lines: [{ type: "progress", label: "Session", scope: "overview" }],
+          },
+        ]
+      }
+      return null
+    })
+    state.loadPluginSettingsMock.mockResolvedValueOnce({ order: ["a", "b"], disabled: [] })
+
+    render(<App />)
+    await waitFor(() => expect(state.startBatchMock).toHaveBeenCalled())
+    state.probeHandlers?.onResult({
+      providerId: "a",
+      displayName: "Alpha",
+      iconUrl: "icon-a",
+      lines: [{ type: "progress", label: "Session", used: 10, limit: 100, format: { kind: "percent" } }],
+    }, "baseline")
+    state.probeHandlers?.onResult({
+      providerId: "b",
+      displayName: "Beta",
+      iconUrl: "icon-b",
+      lines: [{ type: "progress", label: "Session", used: 30, limit: 100, format: { kind: "percent" } }],
+    }, "baseline")
+    state.probeHandlers?.onBatchComplete("baseline")
+
+    const callsBeforeReset = state.renderTrayBarsIconMock.mock.calls.length
+    state.probeHandlers?.onResult({
+      providerId: "b",
+      displayName: "Beta",
+      iconUrl: "icon-b",
+      lines: [{ type: "progress", label: "Session", used: 5, limit: 100, format: { kind: "percent" } }],
+    }, "reset")
+    state.probeHandlers?.onBatchComplete("reset")
+
+    await waitFor(() => {
+      expect(state.renderTrayBarsIconMock.mock.calls.length).toBeGreaterThan(callsBeforeReset)
+      expect(state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0].providerIconUrl).toBe("icon-a")
+    })
+  })
+
+  it("remembers auto-selection in bars mode when switching back to provider mode", async () => {
+    state.loadMenubarIconStyleMock.mockResolvedValue("bars")
+    state.invokeMock.mockImplementation(async (cmd: string) => {
+      if (cmd === "list_plugins") {
+        return [
+          {
+            id: "a",
+            name: "Alpha",
+            iconUrl: "icon-a",
+            primaryCandidates: ["Session"],
+            lines: [{ type: "progress", label: "Session", scope: "overview" }],
+          },
+          {
+            id: "b",
+            name: "Beta",
+            iconUrl: "icon-b",
+            primaryCandidates: ["Session"],
+            lines: [{ type: "progress", label: "Session", scope: "overview" }],
+          },
+        ]
+      }
+      return null
+    })
+    state.loadPluginSettingsMock.mockResolvedValueOnce({ order: ["a", "b"], disabled: [] })
+
+    render(<App />)
+    await waitFor(() => expect(state.startBatchMock).toHaveBeenCalled())
+    const result = (providerId: "a" | "b", used: number, batchId: string) => {
+      state.probeHandlers?.onResult({
+        providerId,
+        displayName: providerId === "a" ? "Alpha" : "Beta",
+        iconUrl: providerId === "a" ? "icon-a" : "icon-b",
+        lines: [{ type: "progress", label: "Session", used, limit: 100, format: { kind: "percent" } }],
+      }, batchId)
+    }
+
+    result("a", 10, "baseline")
+    result("b", 20, "baseline")
+    state.probeHandlers?.onBatchComplete("baseline")
+    result("b", 30, "changed")
+    state.probeHandlers?.onBatchComplete("changed")
+
+    await waitFor(() => {
+      const latestCall = state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0]
+      expect(latestCall.style).toBe("bars")
+      expect(latestCall.bars.map((bar: { id: string }) => bar.id)).toEqual(["a", "b"])
+    })
+
+    const settingsButtons = await screen.findAllByRole("button", { name: "Settings" })
+    await userEvent.click(settingsButtons[0])
+    await userEvent.click(await screen.findByRole("radio", { name: "Plugin" }))
+
+    await waitFor(() => {
+      const latestCall = state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0]
+      expect(latestCall.style).toBe("provider")
+      expect(latestCall.providerIconUrl).toBe("icon-b")
+    })
+  })
+
+  it("falls back when the selected tray provider is disabled", async () => {
+    state.invokeMock.mockImplementation(async (cmd: string) => {
+      if (cmd === "list_plugins") {
+        return [
+          {
+            id: "a",
+            name: "Alpha",
+            iconUrl: "icon-a",
+            primaryCandidates: ["Session"],
+            lines: [{ type: "progress", label: "Session", scope: "overview" }],
+          },
+          {
+            id: "b",
+            name: "Beta",
+            iconUrl: "icon-b",
+            primaryCandidates: ["Session"],
+            lines: [{ type: "progress", label: "Session", scope: "overview" }],
+          },
+        ]
+      }
+      return null
+    })
+    state.loadPluginSettingsMock.mockResolvedValueOnce({ order: ["a", "b"], disabled: [] })
+
+    render(<App />)
+    await waitFor(() => expect(state.startBatchMock).toHaveBeenCalled())
+    await userEvent.click(await screen.findByRole("button", { name: "Beta" }))
+    await waitFor(() => {
+      expect(state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0].providerIconUrl).toBe("icon-b")
+    })
+
+    const removeAction = await triggerPluginContextAction("Beta", "b", "remove")
+    removeAction()
+
+    await waitFor(() => {
+      expect(state.renderTrayBarsIconMock.mock.calls.at(-1)?.[0].providerIconUrl).toBe("icon-a")
+    })
   })
 
   it("updates display mode in settings", async () => {

@@ -149,6 +149,7 @@ export function usePanel({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [activeView, displayPlugins, setActiveView, showAbout])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: View and plugin changes alter the observed DOM size and must retrigger measurement.
   useEffect(() => {
     if (!isTauri()) return
     const container = containerRef.current
@@ -204,6 +205,7 @@ export function usePanel({
     return () => observer.disconnect()
   }, [activeView, displayPlugins])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: View changes replace scroll content and must refresh the observer state.
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return

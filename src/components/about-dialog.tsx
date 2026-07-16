@@ -80,6 +80,7 @@ export function AboutDialog({ version, onClose }: AboutDialogProps) {
   }
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Escape closes the dialog for keyboard users; the backdrop is not a focus target.
     <div
       className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-xl"
       onClick={handleBackdropClick}

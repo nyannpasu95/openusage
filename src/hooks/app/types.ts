@@ -7,3 +7,10 @@ export type PluginState = {
   lastManualRefreshAt: number | null
   lastUpdatedAt: number | null
 }
+
+export type ProbeResultUpdate = {
+  batchId: string
+  output: PluginOutput
+  previousData: PluginOutput | null
+  successful: boolean
+}

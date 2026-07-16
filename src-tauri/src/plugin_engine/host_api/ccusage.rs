@@ -26,7 +26,8 @@ pub(crate) enum CcusageProvider {
     Codex,
 }
 
-pub(crate) static CCUSAGE_ACTIVE_PROVIDERS: OnceLock<Mutex<HashSet<CcusageProvider>>> = OnceLock::new();
+pub(crate) static CCUSAGE_ACTIVE_PROVIDERS: OnceLock<Mutex<HashSet<CcusageProvider>>> =
+    OnceLock::new();
 
 pub(crate) struct CcusageQueryGuard {
     provider: CcusageProvider,
@@ -104,7 +105,10 @@ pub(crate) fn infer_ccusage_provider(plugin_id: &str) -> Option<CcusageProvider>
     parse_ccusage_provider(plugin_id)
 }
 
-pub(crate) fn resolve_ccusage_provider(opts: &CcusageQueryOpts, plugin_id: &str) -> CcusageProvider {
+pub(crate) fn resolve_ccusage_provider(
+    opts: &CcusageQueryOpts,
+    plugin_id: &str,
+) -> CcusageProvider {
     opts.provider
         .as_deref()
         .and_then(parse_ccusage_provider)
@@ -228,7 +232,10 @@ pub(crate) fn nvm_default_bin_path(home: &Path) -> Option<PathBuf> {
     Some(home.join(".nvm/versions/node").join(version).join("bin"))
 }
 
-pub(crate) fn ccusage_path_entries_with(home: Option<&Path>, existing_path: Option<&OsStr>) -> Vec<PathBuf> {
+pub(crate) fn ccusage_path_entries_with(
+    home: Option<&Path>,
+    existing_path: Option<&OsStr>,
+) -> Vec<PathBuf> {
     let mut entries: Vec<PathBuf> = Vec::new();
 
     if let Some(home) = home {
@@ -826,7 +833,6 @@ pub fn patch_ccusage_wrapper(ctx: &rquickjs::Ctx<'_>) -> rquickjs::Result<()> {
         .as_bytes(),
     )
 }
-
 
 #[cfg(test)]
 mod tests {

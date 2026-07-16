@@ -7,17 +7,20 @@ import {
 import { useProbeAutoUpdate } from "@/hooks/app/use-probe-auto-update"
 import { useProbeRefreshActions } from "@/hooks/app/use-probe-refresh-actions"
 import { useProbeState } from "@/hooks/app/use-probe-state"
+import type { ProbeResultUpdate } from "@/hooks/app/types"
 
 type UseProbeArgs = {
   pluginSettings: PluginSettings | null
   autoUpdateInterval: AutoUpdateIntervalMinutes
-  onProbeResult?: () => void
+  onProbeResult?: (update: ProbeResultUpdate) => void
+  onProbeBatchComplete?: (batchId: string) => void
 }
 
 export function useProbe({
   pluginSettings,
   autoUpdateInterval,
   onProbeResult,
+  onProbeBatchComplete,
 }: UseProbeArgs) {
   const {
     pluginStates,
@@ -28,7 +31,9 @@ export function useProbe({
     handleProbeResult,
   } = useProbeState({ onProbeResult })
 
-  const handleBatchComplete = useCallback(() => {}, [])
+  const handleBatchComplete = useCallback((batchId: string) => {
+    onProbeBatchComplete?.(batchId)
+  }, [onProbeBatchComplete])
 
   const { startBatch } = useProbeEvents({
     onResult: handleProbeResult,

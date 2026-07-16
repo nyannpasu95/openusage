@@ -11,7 +11,13 @@ import { useSettingsSystemActions } from "@/hooks/app/use-settings-system-action
 import { useSettingsTheme } from "@/hooks/app/use-settings-theme"
 import { useTrayIcon } from "@/hooks/app/use-tray-icon"
 import { REFRESH_COOLDOWN_MS, getEnabledPluginIds, savePluginSettings } from "@/lib/settings"
+import {
+  getTrayUsageIncrease,
+  pickLargestTrayUsageIncrease,
+  type TrayUsageIncrease,
+} from "@/lib/tray-usage-change"
 import { type PluginContextAction } from "@/components/side-nav"
+import type { ProbeResultUpdate } from "@/hooks/app/types"
 import { useAppPluginStore } from "@/stores/app-plugin-store"
 import { useAppPreferencesStore } from "@/stores/app-preferences-store"
 import { useAppUiStore } from "@/stores/app-ui-store"
@@ -80,9 +86,14 @@ function App() {
     }))
   )
 
-  const scheduleProbeTrayUpdateRef = useRef<() => void>(() => {})
-  const handleProbeResult = useCallback(() => {
-    scheduleProbeTrayUpdateRef.current()
+  const probeResultHandlerRef = useRef<(update: ProbeResultUpdate) => void>(() => {})
+  const probeBatchCompleteHandlerRef = useRef<(batchId: string) => void>(() => {})
+  const usageCandidatesByBatchRef = useRef<Map<string, Map<string, TrayUsageIncrease>>>(new Map())
+  const handleProbeResult = useCallback((update: ProbeResultUpdate) => {
+    probeResultHandlerRef.current(update)
+  }, [])
+  const handleProbeBatchComplete = useCallback((batchId: string) => {
+    probeBatchCompleteHandlerRef.current(batchId)
   }, [])
 
   const {
@@ -98,9 +109,14 @@ function App() {
     pluginSettings,
     autoUpdateInterval,
     onProbeResult: handleProbeResult,
+    onProbeBatchComplete: handleProbeBatchComplete,
   })
 
-  const { scheduleTrayIconUpdate, traySettingsPreview } = useTrayIcon({
+  const {
+    scheduleTrayIconUpdate,
+    selectTrayProvider,
+    traySettingsPreview,
+  } = useTrayIcon({
     pluginsMeta,
     pluginSettings,
     pluginStates,
@@ -111,10 +127,45 @@ function App() {
   })
 
   useEffect(() => {
-    scheduleProbeTrayUpdateRef.current = () => {
+    probeResultHandlerRef.current = (update) => {
       scheduleTrayIconUpdate("probe", TRAY_PROBE_DEBOUNCE_MS)
+
+      if (!update.successful || !update.previousData) return
+      const meta = pluginsMeta.find((plugin) => plugin.id === update.output.providerId)
+      if (!meta) return
+
+      const increase = getTrayUsageIncrease({
+        meta,
+        previousData: update.previousData,
+        nextData: update.output,
+        preferWeekly: menubarMetric === "weekly",
+      })
+      if (!increase) return
+
+      let candidates = usageCandidatesByBatchRef.current.get(update.batchId)
+      if (!candidates) {
+        candidates = new Map()
+        usageCandidatesByBatchRef.current.set(update.batchId, candidates)
+      }
+      candidates.set(increase.providerId, increase)
     }
-  }, [scheduleTrayIconUpdate])
+
+    probeBatchCompleteHandlerRef.current = (batchId) => {
+      const candidates = usageCandidatesByBatchRef.current.get(batchId)
+      usageCandidatesByBatchRef.current.delete(batchId)
+      if (!candidates || candidates.size === 0) return
+
+      const selected = pickLargestTrayUsageIncrease(
+        candidates.values(),
+        pluginSettings?.order ?? [],
+      )
+      if (selected) selectTrayProvider(selected.providerId)
+    }
+  }, [menubarMetric, pluginSettings, pluginsMeta, scheduleTrayIconUpdate, selectTrayProvider])
+
+  useEffect(() => () => {
+    usageCandidatesByBatchRef.current.clear()
+  }, [])
 
   const { applyStartOnLogin } = useSettingsBootstrap({
     setPluginSettings,

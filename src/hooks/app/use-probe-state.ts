@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { PluginOutput } from "@/lib/plugin-types"
-import type { PluginState } from "@/hooks/app/types"
+import type { PluginState, ProbeResultUpdate } from "@/hooks/app/types"
 
 type UseProbeStateArgs = {
-  onProbeResult?: () => void
+  onProbeResult?: (update: ProbeResultUpdate) => void
 }
 
 export function useProbeState({ onProbeResult }: UseProbeStateArgs) {
@@ -73,7 +73,7 @@ export function useProbeState({ onProbeResult }: UseProbeStateArgs) {
   }, [updatePluginStates])
 
   const handleProbeResult = useCallback(
-    (output: PluginOutput) => {
+    (output: PluginOutput, batchId: string) => {
       const errorMessage = getErrorMessage(output)
       const isManual = manualRefreshIdsRef.current.has(output.providerId)
       if (isManual) {
@@ -81,8 +81,10 @@ export function useProbeState({ onProbeResult }: UseProbeStateArgs) {
       }
 
       const now = Date.now()
+      let previousData: PluginOutput | null = null
       updatePluginStates((prev) => {
         const existing = prev[output.providerId]
+        previousData = existing?.data ?? null
         return {
           ...prev,
           [output.providerId]: {
@@ -97,7 +99,12 @@ export function useProbeState({ onProbeResult }: UseProbeStateArgs) {
         }
       })
 
-      onProbeResult?.()
+      onProbeResult?.({
+        batchId,
+        output,
+        previousData,
+        successful: errorMessage === null,
+      })
     },
     [getErrorMessage, onProbeResult, updatePluginStates]
   )

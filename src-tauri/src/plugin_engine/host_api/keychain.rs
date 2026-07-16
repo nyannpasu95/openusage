@@ -27,7 +27,10 @@ pub(crate) fn keychain_find_generic_password_args(service: &str) -> Vec<OsString
     ]
 }
 
-pub(crate) fn keychain_find_generic_password_args_for_account(service: &str, account: &str) -> Vec<OsString> {
+pub(crate) fn keychain_find_generic_password_args_for_account(
+    service: &str,
+    account: &str,
+) -> Vec<OsString> {
     vec![
         OsString::from("find-generic-password"),
         OsString::from("-a"),
@@ -86,7 +89,6 @@ pub(crate) fn keychain_delete_generic_password_args_for_account(
         OsString::from(service),
     ]
 }
-
 
 pub(crate) fn inject_keychain<'js>(
     ctx: &Ctx<'js>,
@@ -271,18 +273,19 @@ pub(crate) fn inject_keychain<'js>(
                     .output();
 
                 if let Ok(output) = find_output
-                    && output.status.success() {
-                        let stdout = String::from_utf8_lossy(&output.stdout);
-                        for line in stdout.lines() {
-                            if let Some(start) = line.find("\"acct\"<blob>=\"") {
-                                let rest = &line[start + 14..];
-                                if let Some(end) = rest.find('"') {
-                                    account_arg = Some(rest[..end].to_string());
-                                    break;
-                                }
+                    && output.status.success()
+                {
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    for line in stdout.lines() {
+                        if let Some(start) = line.find("\"acct\"<blob>=\"") {
+                            let rest = &line[start + 14..];
+                            if let Some(end) = rest.find('"') {
+                                account_arg = Some(rest[..end].to_string());
+                                break;
                             }
                         }
                     }
+                }
 
                 let output = if let Some(ref acct) = account_arg {
                     std::process::Command::new("security")
@@ -655,11 +658,7 @@ mod tests {
 
         assert_eq!(
             rendered,
-            vec![
-                "delete-generic-password",
-                "-s",
-                "Claude Code-credentials",
-            ]
+            vec!["delete-generic-password", "-s", "Claude Code-credentials",]
         );
     }
 

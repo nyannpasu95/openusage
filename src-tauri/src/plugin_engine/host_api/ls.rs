@@ -22,7 +22,11 @@ pub(crate) struct LsDiscoverResult {
     extension_port: Option<i32>,
 }
 
-pub(crate) fn inject_ls<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquickjs::Result<()> {
+pub(crate) fn inject_ls<'js>(
+    ctx: &Ctx<'js>,
+    host: &Object<'js>,
+    plugin_id: &str,
+) -> rquickjs::Result<()> {
     let ls_obj = Object::new(ctx.clone())?;
     let pid = plugin_id.to_string();
 
@@ -321,16 +325,17 @@ pub(crate) fn ls_parse_listening_ports(output: &str) -> Vec<i32> {
             if let Some(colon_pos) = token.rfind(':') {
                 let port_str = &token[colon_pos + 1..];
                 if let Ok(port) = port_str.parse::<i32>()
-                    && port > 0 && port < 65536 {
-                        ports.insert(port);
-                        break;
-                    }
+                    && port > 0
+                    && port < 65536
+                {
+                    ports.insert(port);
+                    break;
+                }
             }
         }
     }
     ports.into_iter().collect()
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -391,5 +396,4 @@ mod tests {
             None
         );
     }
-
 }

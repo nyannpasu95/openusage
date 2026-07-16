@@ -387,6 +387,17 @@ fn get_log_path(app_handle: tauri::AppHandle) -> Result<String, String> {
     log_path::for_app(&app_handle).map(|path| path.to_string_lossy().to_string())
 }
 
+#[tauri::command]
+fn get_local_api_status(
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> local_http_api::LocalApiStatus {
+    let app_data_dir = state
+        .lock()
+        .map(|s| s.app_data_dir.clone())
+        .unwrap_or_default();
+    local_http_api::get_local_api_status(&app_data_dir)
+}
+
 /// Update the global shortcut registration.
 /// Pass `null` to disable the shortcut, or a shortcut string like "CommandOrControl+Shift+U".
 #[cfg(desktop)]
@@ -539,6 +550,7 @@ pub fn run() {
             start_probe_batch,
             list_plugins,
             get_log_path,
+            get_local_api_status,
             update_global_shortcut
         ])
         .setup(|app| {
@@ -587,7 +599,7 @@ pub fn run() {
             }));
 
             local_http_api::init(&app_data_dir, known_plugin_ids);
-            local_http_api::start_server();
+            local_http_api::start_server(&app_data_dir);
 
             tray::create(app.handle())?;
 
@@ -601,27 +613,26 @@ pub fn run() {
 
                 if let Ok(store) = app.handle().store("settings.json")
                     && let Some(shortcut_value) = store.get(GLOBAL_SHORTCUT_STORE_KEY)
-                        && let Some(shortcut) = shortcut_value.as_str() {
-                            let shortcut = shortcut.trim();
-                            if !shortcut.is_empty() {
-                                let handle = app.handle().clone();
-                                log::info!("Registering initial global shortcut: {}", shortcut);
-                                if let Err(e) = handle.global_shortcut().on_shortcut(
-                                    shortcut,
-                                    |app, _shortcut, event| {
-                                        handle_global_shortcut(app, event);
-                                    },
-                                ) {
-                                    log::warn!("Failed to register initial global shortcut: {}", e);
-                                } else if let Ok(mut managed_shortcut) =
-                                    managed_shortcut_slot().lock()
-                                {
-                                    *managed_shortcut = Some(shortcut.to_string());
-                                } else {
-                                    log::warn!("Failed to store managed shortcut in memory");
-                                }
-                            }
+                    && let Some(shortcut) = shortcut_value.as_str()
+                {
+                    let shortcut = shortcut.trim();
+                    if !shortcut.is_empty() {
+                        let handle = app.handle().clone();
+                        log::info!("Registering initial global shortcut: {}", shortcut);
+                        if let Err(e) = handle.global_shortcut().on_shortcut(
+                            shortcut,
+                            |app, _shortcut, event| {
+                                handle_global_shortcut(app, event);
+                            },
+                        ) {
+                            log::warn!("Failed to register initial global shortcut: {}", e);
+                        } else if let Ok(mut managed_shortcut) = managed_shortcut_slot().lock() {
+                            *managed_shortcut = Some(shortcut.to_string());
+                        } else {
+                            log::warn!("Failed to store managed shortcut in memory");
                         }
+                    }
+                }
             }
 
             Ok(())

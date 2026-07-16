@@ -1,6 +1,9 @@
 use super::*;
 
-pub(crate) fn decrypt_aes_256_gcm_envelope(envelope: &str, key_b64: &str) -> Result<String, String> {
+pub(crate) fn decrypt_aes_256_gcm_envelope(
+    envelope: &str,
+    key_b64: &str,
+) -> Result<String, String> {
     let trimmed_envelope = envelope.trim();
     let trimmed_key = key_b64.trim();
     let parts: Vec<&str> = trimmed_envelope.split(':').collect();
@@ -56,7 +59,10 @@ pub(crate) fn decrypt_aes_256_gcm_envelope(envelope: &str, key_b64: &str) -> Res
     String::from_utf8(plaintext).map_err(|e| format!("decrypted payload is not UTF-8: {}", e))
 }
 
-pub(crate) fn encrypt_aes_256_gcm_envelope(plaintext: &str, key_b64: &str) -> Result<String, String> {
+pub(crate) fn encrypt_aes_256_gcm_envelope(
+    plaintext: &str,
+    key_b64: &str,
+) -> Result<String, String> {
     let trimmed_key = key_b64.trim();
     let key = BASE64_STANDARD
         .decode(trimmed_key)
@@ -90,7 +96,6 @@ pub(crate) fn encrypt_aes_256_gcm_envelope(plaintext: &str, key_b64: &str) -> Re
         BASE64_STANDARD.encode(ciphertext)
     ))
 }
-
 
 pub(crate) fn inject_crypto<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()> {
     let crypto_obj = Object::new(ctx.clone())?;
@@ -141,7 +146,6 @@ pub(crate) fn inject_crypto<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs
     host.set("crypto", crypto_obj)?;
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -292,5 +296,4 @@ mod tests {
             );
         });
     }
-
 }

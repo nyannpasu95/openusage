@@ -6,6 +6,10 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 const PROBE_TIMEOUT_SECS: u64 = 30;
+const MEMORY_LIMIT_BYTES: usize = 256 * 1024 * 1024;
+const STACK_LIMIT_BYTES: usize = 1024 * 1024;
+const MAX_OUTPUT_LINES: usize = 100;
+const MAX_STRING_LEN: usize = 10_000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -95,6 +99,8 @@ fn run_probe_with_timeout(
         Ok(rt) => rt,
         Err(_) => return fallback,
     };
+    rt.set_memory_limit(MEMORY_LIMIT_BYTES);
+    rt.set_max_stack_size(STACK_LIMIT_BYTES);
     rt.set_interrupt_handler(Some(Box::new(move || Instant::now() >= deadline_at)));
 
     let ctx = match Context::full(&rt) {
@@ -239,19 +245,27 @@ fn parse_lines(result: &Object) -> Result<Vec<MetricLine>, String> {
 
     let mut out = Vec::new();
     let len = lines.len();
-    for idx in 0..len {
+    let scan_count = len.min(MAX_OUTPUT_LINES);
+    if len > MAX_OUTPUT_LINES {
+        log::warn!(
+            "probe returned {} lines; capping at {}",
+            len,
+            MAX_OUTPUT_LINES
+        );
+    }
+    for idx in 0..scan_count {
         let line: Object = lines
             .get(idx)
             .map_err(|_| format!("invalid line at index {}", idx))?;
 
         let line_type: String = line.get("type").unwrap_or_default();
-        let label = line.get::<_, String>("label").unwrap_or_default();
-        let color = line.get::<_, String>("color").ok();
-        let subtitle = line.get::<_, String>("subtitle").ok();
+        let label = truncate_string(line.get::<_, String>("label").unwrap_or_default());
+        let color = line.get::<_, String>("color").ok().map(truncate_string);
+        let subtitle = line.get::<_, String>("subtitle").ok().map(truncate_string);
 
         match line_type.as_str() {
             "text" => {
-                let value = line.get::<_, String>("value").unwrap_or_default();
+                let value = truncate_string(line.get::<_, String>("value").unwrap_or_default());
                 out.push(MetricLine::Text {
                     label,
                     value,
@@ -419,7 +433,8 @@ fn parse_lines(result: &Object) -> Result<Vec<MetricLine>, String> {
                                     // ISO-like but missing timezone: assume UTC.
                                     let is_missing_tz =
                                         value.contains('T') && !value.ends_with('Z') && {
-                                            let tail = value.split_once('T').map(|x| x.1).unwrap_or("");
+                                            let tail =
+                                                value.split_once('T').map(|x| x.1).unwrap_or("");
                                             !tail.contains('+') && !tail.contains('-')
                                         };
                                     if is_missing_tz {
@@ -495,7 +510,7 @@ fn parse_lines(result: &Object) -> Result<Vec<MetricLine>, String> {
                 });
             }
             "badge" => {
-                let text = line.get::<_, String>("text").unwrap_or_default();
+                let text = truncate_string(line.get::<_, String>("text").unwrap_or_default());
                 out.push(MetricLine::Badge {
                     label,
                     text,
@@ -637,7 +652,10 @@ fn parse_bar_chart_line<'js>(
     }
 
     if points.is_empty() {
-        errors.push(format!("barChart line at index {} has no valid points", idx));
+        errors.push(format!(
+            "barChart line at index {} has no valid points",
+            idx
+        ));
         return (None, errors);
     }
 
@@ -714,6 +732,18 @@ fn error_line(message: String) -> MetricLine {
         color: Some("#ef4444".to_string()),
         subtitle: None,
     }
+}
+
+fn truncate_string(s: String) -> String {
+    if s.len() <= MAX_STRING_LEN {
+        return s;
+    }
+    let truncated: String = s
+        .char_indices()
+        .take_while(|(i, _)| *i < MAX_STRING_LEN)
+        .map(|(_, c)| c)
+        .collect();
+    format!("{}...(truncated)", truncated)
 }
 
 #[cfg(test)]
@@ -861,8 +891,6 @@ mod tests {
 
     #[test]
     fn bar_chart_caps_excessive_points() {
-        // A plugin-controlled points array must not parse unbounded: this path
-        // is native and runs after the JS deadline interrupt can fire.
         let plugin = test_plugin(
             r#"
             globalThis.__openusage_plugin = {
@@ -884,5 +912,50 @@ mod tests {
             json["points"].as_array().expect("points array").len(),
             MAX_BAR_CHART_POINTS
         );
+    }
+
+    #[test]
+    fn probe_caps_excessive_line_count() {
+        let plugin = test_plugin(
+            r#"
+            globalThis.__openusage_plugin = {
+                probe() {
+                    var lines = [];
+                    for (var i = 0; i < 500; i++) {
+                        lines.push({ type: "text", label: "L" + i, value: "v" });
+                    }
+                    return { lines: lines };
+                }
+            };
+            "#,
+        );
+
+        let output = run_probe(&plugin, &temp_app_dir("line-cap"), "0.0.0");
+        assert_eq!(output.lines.len(), MAX_OUTPUT_LINES);
+    }
+
+    #[test]
+    fn probe_truncates_long_strings() {
+        let plugin = test_plugin(
+            r#"
+            globalThis.__openusage_plugin = {
+                probe() {
+                    var long = "x".repeat(20000);
+                    return { lines: [{ type: "text", label: long, value: long }] };
+                }
+            };
+            "#,
+        );
+
+        let output = run_probe(&plugin, &temp_app_dir("string-trunc"), "0.0.0");
+        match &output.lines[0] {
+            MetricLine::Text { label, value, .. } => {
+                assert!(label.len() <= MAX_STRING_LEN + 15);
+                assert!(label.ends_with("(truncated)"));
+                assert!(value.len() <= MAX_STRING_LEN + 15);
+                assert!(value.ends_with("(truncated)"));
+            }
+            other => panic!("expected text line, got {:?}", other),
+        }
     }
 }

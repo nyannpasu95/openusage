@@ -44,6 +44,7 @@ export function useNowTicker({
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
   }, [enabled, pauseWhenHidden])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resetKey intentionally restarts the ticker without being read inside the effect.
   useEffect(() => {
     if (!enabled || !documentVisible) return undefined
 

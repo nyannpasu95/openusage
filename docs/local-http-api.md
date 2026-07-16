@@ -4,7 +4,7 @@ OhMyUsage exposes a read-only HTTP API on the loopback interface so other local 
 
 **Base URL:** `http://127.0.0.1:6736`
 
-The server starts automatically with the app. If the port is already in use, the feature is silently disabled for that session.
+The server starts automatically with the app. If the token cannot be stored securely or the server cannot bind to its loopback port, the feature is disabled for that session. Check the **Local HTTP API** section in Settings for the current status.
 
 ## Routes
 
@@ -80,14 +80,28 @@ The `lines` array uses the same metric line types as the internal plugin output:
 - Only **successful** probe results are cached. A failed probe never overwrites a previous successful snapshot.
 - The single-provider endpoint (`/v1/usage/:providerId`) works for any known provider, including disabled ones.
 
-## CORS
+## Authentication
 
-All responses include permissive CORS headers:
+All `GET` requests require a bearer token in the `Authorization` header:
 
 ```
-Access-Control-Allow-Origin: *
+Authorization: Bearer <token>
+```
+
+The token is generated randomly on each app launch and written to a file named `local-api-token` in the app data directory. On Unix systems, the file is restricted to the current user (`0600`). The API does not start if this file cannot be written securely. Read this file to obtain the token. The token file path is shown in the **Local HTTP API** section of Settings.
+
+Requests without a valid token receive **401 Unauthorized**.
+
+`OPTIONS` (preflight) requests do not require authentication.
+
+## CORS
+
+CORS is restricted to loopback origins only (`http://localhost`, `http://127.0.0.1`, `http://[::1]` on any port). External origins are rejected with `Access-Control-Allow-Origin: null`.
+
+```
+Access-Control-Allow-Origin: <reflected loopback origin>
 Access-Control-Allow-Methods: GET, OPTIONS
-Access-Control-Allow-Headers: Content-Type
+Access-Control-Allow-Headers: Content-Type, Authorization
 ```
 
 `OPTIONS` requests return **204 No Content** with these headers for preflight support.
@@ -102,6 +116,8 @@ Error responses use this shape:
 }
 ```
 
-Possible error codes: `provider_not_found`, `not_found`, `method_not_allowed`, `server_busy`.
+Possible error codes: `provider_not_found`, `not_found`, `method_not_allowed`, `unauthorized`, `server_busy`.
+
+`unauthorized` returns **401 Unauthorized** when the bearer token is missing or incorrect.
 
 `server_busy` returns **503 Service Unavailable** when the local API is already handling the maximum number of concurrent connections. Clients should back off and retry later.

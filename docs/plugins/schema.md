@@ -112,6 +112,8 @@ Rules:
 - Up to 4 enabled plugins are shown in the tray (in plugin order)
 - If no data is available yet, the bar shows as a track without fill
 
+In the single-provider and donut styles, the menu bar automatically follows the provider whose selected progress metric has just increased. The first successful result only establishes a baseline; unchanged values, decreases, resets, plan changes, and text-only Balance values do not trigger a switch. If several providers increase in one refresh, the largest increase relative to its limit wins, with plugin order breaking ties. Bars style continues to show all available providers and remembers the automatic selection for later single-provider display.
+
 Example:
 
 ```json
@@ -128,6 +130,8 @@ Example:
 ### Weekly Metric (Menubar)
 
 A provider can mark one progress line with `"period": "weekly"`. When the user sets the menubar metric to **Weekly** (Settings → Menubar Icon), the tray icon and tooltip show this line instead of the provider's primary metric.
+
+The same choice drives automatic following: the weekly line is compared when it is available, otherwise the provider falls back to its primary candidate.
 
 It is an **override of the primary metric**, not a standalone mode: the provider must still define a primary (`primaryOrder`) line — a provider with *only* a weekly line will not appear in the menubar. Providers without a weekly line keep showing their primary. `period` only recognizes `"weekly"` (other values are ignored), and only the first `"period": "weekly"` line is used.
 

@@ -1,0 +1,96 @@
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { LoaderCircle } from "lucide-react";
+
+interface LocalApiStatus {
+  enabled: boolean;
+  state: "starting" | "listening" | "portInUse" | "tokenFileError" | "bindError";
+  bindAddr: string;
+  port: number;
+  tokenFilePath: string | null;
+}
+
+const STATUS_LABELS: Record<LocalApiStatus["state"], string> = {
+  starting: "Starting",
+  listening: "Active",
+  portInUse: "Disabled (Port In Use)",
+  tokenFileError: "Disabled (Token File Error)",
+  bindError: "Disabled (Bind Error)",
+};
+
+export function LocalApiSection() {
+  const [status, setStatus] = useState<LocalApiStatus | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    invoke<LocalApiStatus>("get_local_api_status")
+      .then(setStatus)
+      .catch((err) => {
+        console.error("Failed to get local API status:", err);
+        setError(true);
+      });
+  }, []);
+
+  return (
+    <section>
+      <h3 className="text-lg font-semibold mb-0">Local HTTP API</h3>
+      <p className="text-sm text-muted-foreground mb-2">
+        Read-only usage data on the loopback interface
+      </p>
+      <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
+        {error ? (
+          <p className="text-red-500">Unable To Read API Status</p>
+        ) : status === null ? (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <LoaderCircle className="size-4 animate-spin" />
+            Checking status...
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Status</span>
+              <span
+                className={
+                  status.state === "listening"
+                    ? "text-green-600"
+                    : status.state === "starting"
+                      ? "text-muted-foreground"
+                      : "text-red-500"
+                }
+              >
+                {STATUS_LABELS[status.state]}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Address</span>
+              <code className="text-xs">{status.bindAddr}</code>
+            </div>
+            {status.tokenFilePath && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Token File</span>
+                <code className="text-xs truncate max-w-[200px]" title={status.tokenFilePath}>
+                  {status.tokenFilePath}
+                </code>
+              </div>
+            )}
+            {status.state === "portInUse" && (
+              <p className="text-xs text-red-500 pt-1">
+                Another process is using port {status.port}. The API will retry on next launch.
+              </p>
+            )}
+            {status.state === "tokenFileError" && (
+              <p className="text-xs text-red-500 pt-1">
+                The API token could not be stored securely. Check the app logs for details.
+              </p>
+            )}
+            {status.state === "bindError" && (
+              <p className="text-xs text-red-500 pt-1">
+                The API could not start. Check the app logs for details.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </section>
+  );
+}

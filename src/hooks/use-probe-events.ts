@@ -18,8 +18,8 @@ type ProbeBatchStarted = {
 }
 
 type UseProbeEventsOptions = {
-  onResult: (output: PluginOutput) => void
-  onBatchComplete: () => void
+  onResult: (output: PluginOutput, batchId: string) => void
+  onBatchComplete: (batchId: string) => void
 }
 
 export function useProbeEvents({ onResult, onBatchComplete }: UseProbeEventsOptions) {
@@ -39,7 +39,7 @@ export function useProbeEvents({ onResult, onBatchComplete }: UseProbeEventsOpti
     const setup = async () => {
       const resultUnlisten = await listen<ProbeResult>("probe:result", (event) => {
         if (activeBatchIds.current.has(event.payload.batchId)) {
-          onResult(event.payload.output)
+          onResult(event.payload.output, event.payload.batchId)
         }
       })
 
@@ -52,7 +52,7 @@ export function useProbeEvents({ onResult, onBatchComplete }: UseProbeEventsOpti
         "probe:batch-complete",
         (event) => {
           if (activeBatchIds.current.delete(event.payload.batchId)) {
-            onBatchComplete()
+            onBatchComplete(event.payload.batchId)
           }
         }
       )

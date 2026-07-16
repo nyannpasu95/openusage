@@ -221,8 +221,6 @@ export function useSettingsBootstrap({
     setLoadingForPlugins,
     setMenubarIconStyle,
     setMenubarMetric,
-    migrateWindsurfToDevin,
-    migrateLegacyTraySettings,
     setPluginSettings,
     setPluginsMeta,
     setResetTimerDisplayMode,

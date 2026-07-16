@@ -25,6 +25,7 @@ export function useProbeAutoUpdate({
   const [autoUpdateNextAt, setAutoUpdateNextAt] = useState<number | null>(null)
   const [autoUpdateResetToken, setAutoUpdateResetToken] = useState(0)
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: The reset token intentionally restarts the interval without being read inside the effect.
   useEffect(() => {
     if (!pluginSettings) {
       setAutoUpdateNextAt(null)

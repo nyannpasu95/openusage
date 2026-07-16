@@ -19,6 +19,7 @@ import { GripVertical } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { GlobalShortcutSection } from "@/components/global-shortcut-section";
+import { LocalApiSection } from "@/components/local-api-section";
 import { getBarFillLayout, getTrayIconSizePx } from "@/lib/tray-bars-icon";
 import {
   AUTO_UPDATE_OPTIONS,
@@ -220,6 +221,7 @@ function SortablePluginItem({
   };
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: The nested checkbox provides the keyboard-accessible toggle; row click is a pointer convenience.
     <div
       ref={setNodeRef}
       style={style}
@@ -250,6 +252,7 @@ function SortablePluginItem({
       </span>
 
       {/* Wrap to stop Base UI's internal input.click() from bubbling to the row div */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: This wrapper only stops propagation and performs no user action. */}
       <span onClick={(e) => e.stopPropagation()}>
         <Checkbox
           key={`${plugin.id}-${plugin.enabled}`}
@@ -558,6 +561,7 @@ export function SettingsPage({
           Start on login
         </label>
       </section>
+      <LocalApiSection />
       <section>
         <h3 className="text-lg font-semibold mb-0">Plugins</h3>
         <p className="text-sm text-muted-foreground mb-2">

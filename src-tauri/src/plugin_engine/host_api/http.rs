@@ -1,4 +1,7 @@
 use super::*;
+use std::io::Read as _;
+
+const MAX_HTTP_RESPONSE_BYTES: usize = 5 * 1024 * 1024;
 
 pub(crate) fn inject_http<'js>(
     ctx: &Ctx<'js>,
@@ -99,9 +102,19 @@ pub(crate) fn inject_http<'js>(
                     })?;
                     resp_headers.insert(key.to_string(), header_value.to_string());
                 }
-                let body = response
-                    .text()
-                    .map_err(|e| Exception::throw_message(&ctx_inner, &e.to_string()))?;
+                let body = {
+                    let mut limited = response.take((MAX_HTTP_RESPONSE_BYTES + 1) as u64);
+                    let mut buf = Vec::with_capacity(8192);
+                    std::io::Read::read_to_end(&mut limited, &mut buf)
+                        .map_err(|e| Exception::throw_message(&ctx_inner, &e.to_string()))?;
+                    if buf.len() > MAX_HTTP_RESPONSE_BYTES {
+                        return Err(Exception::throw_message(
+                            &ctx_inner,
+                            "HTTP response exceeded size limit",
+                        ));
+                    }
+                    String::from_utf8_lossy(&buf).to_string()
+                };
 
                 // Redact BEFORE truncation to ensure sensitive values are caught while intact
                 let redacted_body = redact_body(&body);
@@ -195,4 +208,3 @@ pub(crate) struct HttpRespParams {
     headers: std::collections::HashMap<String, String>,
     body_text: String,
 }
-

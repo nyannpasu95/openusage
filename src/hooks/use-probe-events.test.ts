@@ -126,10 +126,10 @@ describe("useProbeEvents", () => {
     const resultListener = listeners.get("probe:result")
     const completeListener = listeners.get("probe:batch-complete")
     resultListener?.({ payload: { batchId, output } })
-    expect(onResult).toHaveBeenCalledWith(output)
+    expect(onResult).toHaveBeenCalledWith(output, batchId)
 
     completeListener?.({ payload: { batchId } })
-    expect(onBatchComplete).toHaveBeenCalledTimes(1)
+    expect(onBatchComplete).toHaveBeenCalledWith(batchId)
 
     resultListener?.({ payload: { batchId, output } })
     expect(onResult).toHaveBeenCalledTimes(1)

@@ -4,7 +4,7 @@ use aes_gcm::{
     aes::Aes256,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-use rquickjs::{function::Rest, Ctx, Exception, Function, Object};
+use rquickjs::{Ctx, Exception, Function, Object, function::Rest};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
@@ -241,7 +241,6 @@ fn inject_fs<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()> {
     Ok(())
 }
 
-
 fn iso_now() -> String {
     time::OffsetDateTime::now_utc()
         .format(&time::format_description::well_known::Rfc3339)
@@ -253,13 +252,15 @@ fn iso_now() -> String {
 
 fn expand_path(path: &str) -> String {
     if path == "~"
-        && let Some(home) = dirs::home_dir() {
-            return home.to_string_lossy().to_string();
-        }
+        && let Some(home) = dirs::home_dir()
+    {
+        return home.to_string_lossy().to_string();
+    }
     if path.starts_with("~/")
-        && let Some(home) = dirs::home_dir() {
-            return home.join(&path[2..]).to_string_lossy().to_string();
-        }
+        && let Some(home) = dirs::home_dir()
+    {
+        return home.join(&path[2..]).to_string_lossy().to_string();
+    }
     path.to_string()
 }
 
@@ -298,5 +299,4 @@ mod tests {
 
         assert_eq!(deadline.clamp_duration(Duration::from_secs(10)), None);
     }
-
 }

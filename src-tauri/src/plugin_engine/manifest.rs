@@ -81,17 +81,44 @@ pub fn weekly_candidate(lines: &[ManifestLine]) -> Option<&str> {
         .map(|line| line.label.as_str())
 }
 
+const SUPPORTED_SCHEMA_VERSION: u32 = 1;
+const VALID_LINE_TYPES: &[&str] = &["text", "progress", "badge", "barChart"];
+const VALID_SCOPES: &[&str] = &["overview", "detail"];
+
 fn load_single_plugin(
     plugin_dir: &std::path::Path,
 ) -> Result<LoadedPlugin, Box<dyn std::error::Error>> {
     let manifest_path = plugin_dir.join("plugin.json");
     let manifest_text = std::fs::read_to_string(&manifest_path)?;
     let mut manifest: PluginManifest = serde_json::from_str(&manifest_text)?;
+
+    if manifest.schema_version != SUPPORTED_SCHEMA_VERSION {
+        return Err(format!(
+            "unsupported schemaVersion {} (expected {})",
+            manifest.schema_version, SUPPORTED_SCHEMA_VERSION
+        )
+        .into());
+    }
+
+    validate_plugin_id(&manifest.id)?;
+
     manifest.links = sanitize_plugin_links(&manifest.id, std::mem::take(&mut manifest.links));
 
-    // Validate primary_order / period: only progress lines can carry them,
-    // and period currently only recognizes "weekly".
     for line in manifest.lines.iter() {
+        if !VALID_LINE_TYPES.contains(&line.line_type.as_str()) {
+            return Err(format!(
+                "plugin {} line '{}' has invalid type '{}'",
+                manifest.id, line.label, line.line_type
+            )
+            .into());
+        }
+        if !VALID_SCOPES.contains(&line.scope.as_str()) {
+            return Err(format!(
+                "plugin {} line '{}' has invalid scope '{}'",
+                manifest.id, line.label, line.scope
+            )
+            .into());
+        }
         if line.primary_order.is_some() && line.line_type != "progress" {
             log::warn!(
                 "plugin {} line '{}' has primaryOrder but type is '{}'; will be ignored",
@@ -138,8 +165,22 @@ fn load_single_plugin(
 
     let entry_script = std::fs::read_to_string(&canonical_entry_path)?;
 
-    let icon_file = plugin_dir.join(&manifest.icon);
-    let icon_bytes = std::fs::read(&icon_file)?;
+    if manifest.icon.trim().is_empty() {
+        return Err("plugin icon field cannot be empty".into());
+    }
+    if Path::new(&manifest.icon).is_absolute() {
+        return Err("plugin icon must be a relative path".into());
+    }
+    let icon_path = plugin_dir.join(&manifest.icon);
+    let canonical_icon_path = icon_path.canonicalize()?;
+    if !canonical_icon_path.starts_with(&canonical_plugin_dir) {
+        return Err("plugin icon must remain within plugin directory".into());
+    }
+    if !canonical_icon_path.is_file() {
+        return Err("plugin icon must be a file".into());
+    }
+
+    let icon_bytes = std::fs::read(&canonical_icon_path)?;
     let icon_data_url = format!("data:image/svg+xml;base64,{}", STANDARD.encode(&icon_bytes));
 
     Ok(LoadedPlugin {
@@ -148,6 +189,26 @@ fn load_single_plugin(
         entry_script,
         icon_data_url,
     })
+}
+
+fn validate_plugin_id(id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    if id.is_empty() {
+        return Err("plugin id cannot be empty".into());
+    }
+    if !id
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    {
+        return Err(format!(
+            "plugin id '{}' must be kebab-case (lowercase letters, digits, hyphens)",
+            id
+        )
+        .into());
+    }
+    if id.starts_with('-') || id.ends_with('-') {
+        return Err(format!("plugin id '{}' must not start or end with hyphen", id).into());
+    }
+    Ok(())
 }
 
 fn sanitize_plugin_links(plugin_id: &str, links: Vec<PluginLink>) -> Vec<PluginLink> {
@@ -415,5 +476,32 @@ mod tests {
         assert_eq!(sanitized.len(), 1);
         assert_eq!(sanitized[0].label, "Status");
         assert_eq!(sanitized[0].url, "https://status.example.com");
+    }
+
+    #[test]
+    fn validate_plugin_id_accepts_kebab_case() {
+        assert!(validate_plugin_id("claude").is_ok());
+        assert!(validate_plugin_id("jetbrains-ai-assistant").is_ok());
+        assert!(validate_plugin_id("grok-2").is_ok());
+    }
+
+    #[test]
+    fn validate_plugin_id_rejects_uppercase() {
+        assert!(validate_plugin_id("Claude").is_err());
+        assert!(validate_plugin_id("myPlugin").is_err());
+    }
+
+    #[test]
+    fn validate_plugin_id_rejects_empty_and_edge_hyphens() {
+        assert!(validate_plugin_id("").is_err());
+        assert!(validate_plugin_id("-foo").is_err());
+        assert!(validate_plugin_id("foo-").is_err());
+    }
+
+    #[test]
+    fn validate_plugin_id_rejects_special_chars() {
+        assert!(validate_plugin_id("my_plugin").is_err());
+        assert!(validate_plugin_id("my.plugin").is_err());
+        assert!(validate_plugin_id("my plugin").is_err());
     }
 }

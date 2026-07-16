@@ -77,7 +77,6 @@ export function useTrayIcon({
   const displayModeRef = useRef(displayMode)
   const menubarIconStyleRef = useRef(menubarIconStyle)
   const menubarMetricRef = useRef(menubarMetric)
-  const activeViewRef = useRef(activeView)
   const lastTrayProviderIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -103,10 +102,6 @@ export function useTrayIcon({
   useEffect(() => {
     menubarMetricRef.current = menubarMetric
   }, [menubarMetric])
-
-  useEffect(() => {
-    activeViewRef.current = activeView
-  }, [activeView])
 
   const scheduleTrayIconUpdate = useCallback((
     _reason: TrayUpdateReason,
@@ -196,30 +191,21 @@ export function useTrayIcon({
       const style = menubarIconStyleRef.current
       const preferWeekly = menubarMetricRef.current === "weekly"
       const sizePx = getTrayIconSizePx(window.devicePixelRatio)
-      const nextActiveView = activeViewRef.current
-      const activeProviderId =
-        nextActiveView !== "home" && nextActiveView !== "settings" ? nextActiveView : null
-
-      let trayProviderId: string | null = null
-      if (activeProviderId && enabledPluginIds.includes(activeProviderId)) {
-        trayProviderId = activeProviderId
-      } else if (
-        lastTrayProviderIdRef.current &&
-        enabledPluginIds.includes(lastTrayProviderIdRef.current)
-      ) {
-        trayProviderId = lastTrayProviderIdRef.current
-      } else {
-        trayProviderId = enabledPluginIds[0] ?? null
-      }
-
-      const barsForPreview = getTrayPrimaryBars({
+      const allProviderBars = getTrayPrimaryBars({
         pluginsMeta: pluginsMetaRef.current,
         pluginSettings: currentSettings,
         pluginStates: pluginStatesRef.current,
-        maxBars: 4,
+        maxBars: enabledPluginIds.length,
         displayMode: displayModeRef.current,
         preferWeekly,
       })
+      const supportedProviderIds = new Set(allProviderBars.map((bar) => bar.id))
+      let trayProviderId = lastTrayProviderIdRef.current
+      if (!trayProviderId || !supportedProviderIds.has(trayProviderId)) {
+        trayProviderId = allProviderBars[0]?.id ?? null
+        lastTrayProviderIdRef.current = trayProviderId
+      }
+      const barsForPreview = allProviderBars.slice(0, 4)
 
       const providerBars = trayProviderId
         ? getTrayPrimaryBars({
@@ -331,6 +317,11 @@ export function useTrayIcon({
     }, delayMs)
   }, [])
 
+  const selectTrayProvider = useCallback((providerId: string) => {
+    lastTrayProviderIdRef.current = providerId
+    scheduleTrayIconUpdate("probe", 0)
+  }, [scheduleTrayIconUpdate])
+
   const trayInitializedRef = useRef(false)
   useEffect(() => {
     if (trayInitializedRef.current) return
@@ -370,8 +361,16 @@ export function useTrayIcon({
 
   useEffect(() => {
     if (!trayReady) return
+    if (activeView === "home" || activeView === "settings") return
+    lastTrayProviderIdRef.current = activeView
     scheduleTrayIconUpdate("settings", 0)
-  }, [activeView, menubarIconStyle, menubarMetric, scheduleTrayIconUpdate, trayReady])
+  }, [activeView, scheduleTrayIconUpdate, trayReady])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: These settings are intentional triggers for regenerating the tray icon.
+  useEffect(() => {
+    if (!trayReady) return
+    scheduleTrayIconUpdate("settings", 0)
+  }, [menubarIconStyle, menubarMetric, scheduleTrayIconUpdate, trayReady])
 
   useEffect(() => {
     return () => {
@@ -386,6 +385,7 @@ export function useTrayIcon({
 
   return {
     scheduleTrayIconUpdate,
+    selectTrayProvider,
     traySettingsPreview,
   }
 }
