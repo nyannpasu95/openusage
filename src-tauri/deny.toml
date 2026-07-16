@@ -3,7 +3,11 @@ all-features = true
 
 [advisories]
 version = 2
-ignore = []
+unmaintained = "workspace"
+ignore = [
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml <0.41 is constrained by Tauri's plist and Wayland build dependencies; the app does not parse untrusted XML through these paths" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml <0.41 is constrained by Tauri's plist and Wayland build dependencies; the app does not parse untrusted XML through these paths" },
+]
 
 [licenses]
 version = 2
@@ -19,4 +23,7 @@ allow = [
     "Zlib",
     "0BSD",
     "CC0-1.0",
+    "BSL-1.0",
+    "MPL-2.0",
+    "CDLA-Permissive-2.0",
 ]

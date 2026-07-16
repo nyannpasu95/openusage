@@ -3,6 +3,7 @@ name = "ohmyusage"
 version = "0.6.29"
 description = "OhMyUsage is an open source AI subscription limit tracker"
 authors = ["Robin Ebers"]
+license = "MIT"
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
