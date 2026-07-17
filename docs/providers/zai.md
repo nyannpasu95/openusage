@@ -152,6 +152,8 @@ Returns session token usage and web search quotas.
 - `unit: 3, number: 5` — 5-hour rolling period (session)
 - `unit: 6, number: 7` — 7-day rolling period (weekly)
 
+Numeric strings are accepted for usage fields. Empty or non-numeric values are treated as unavailable.
+
 **TIME_LIMIT:**
 
 - `usage` — total web search/reader call limit (e.g. 4000)

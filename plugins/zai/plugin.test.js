@@ -393,7 +393,7 @@ describe("zai plugin", () => {
     expect(result.lines.find((l) => l.label === "Session")).toBeTruthy()
   })
 
-  it("supports quota payloads where limits are top-level and optional fields are non-numeric", async () => {
+  it("supports top-level limits and coerces numeric strings", async () => {
     const ctx = makeCtx()
     mockEnvWithKey(ctx, "test-key")
     ctx.host.http.request.mockImplementation((opts) => {
@@ -404,6 +404,7 @@ describe("zai plugin", () => {
         status: 200,
         bodyText: JSON.stringify([
           { type: "TOKENS_LIMIT", percentage: "10", nextResetTime: 1738368000000, unit: 3 },
+          { type: "TOKENS_LIMIT", percentage: "  ", unit: 6 },
           { type: "TIME_LIMIT", currentValue: "1095", usage: "4000" },
         ]),
       }
@@ -412,10 +413,12 @@ describe("zai plugin", () => {
     const plugin = await loadPlugin()
     const result = plugin.probe(ctx)
     const session = result.lines.find((l) => l.label === "Session")
+    const weekly = result.lines.find((l) => l.label === "Weekly")
     const web = result.lines.find((l) => l.label === "Web Searches")
-    expect(session.used).toBe(0)
-    expect(web.used).toBe(0)
-    expect(web.limit).toBe(0)
+    expect(session.used).toBe(10)
+    expect(weekly).toBeUndefined()
+    expect(web.used).toBe(1095)
+    expect(web.limit).toBe(4000)
   })
 
   it("shows no-usage badge when token limit entry is missing", async () => {

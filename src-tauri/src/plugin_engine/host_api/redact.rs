@@ -9,12 +9,14 @@ static JWT_RE: LazyLock<Regex> =
 
 /// API-key pattern for response bodies (allows surrounding quote chars).
 static API_KEY_BODY_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"["']?(sk-|pk-|api_|key_|secret_)[A-Za-z0-9_-]{12,}["']?"#).unwrap()
+    Regex::new(r#"["']?(sk-|pk-|api_|key_|secret_|gh[opsur]_|github_pat_)[A-Za-z0-9_-]{12,}["']?"#)
+        .unwrap()
 });
 
 /// API-key pattern for log lines (no quote-boundary capture).
-static API_KEY_LOG_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"(sk-|pk-|api_|key_|secret_)[A-Za-z0-9_-]{12,}"#).unwrap());
+static API_KEY_LOG_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(sk-|pk-|api_|key_|secret_|gh[opsur]_|github_pat_)[A-Za-z0-9_-]{12,}"#).unwrap()
+});
 
 /// Devin session token, shared by body and log redaction.
 static DEVIN_SESSION_RE: LazyLock<Regex> =
@@ -331,6 +333,28 @@ mod tests {
     }
 
     #[test]
+    fn redact_body_redacts_github_tokens() {
+        // "value"/"note" are not sensitive keys, so only the prefix regex catches these.
+        let body = r#"{"value": "gho_16C7e42F292c6912E7710c838347Ae178B4a", "note": "github_pat_11ABCDEFG0j1ZvFWAy0E_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefghij"}"#;
+        let redacted = redact_body(body);
+        assert!(
+            !redacted.contains("gho_16C7e42F292c6912E7710c838347Ae178B4a"),
+            "gho_ token should be redacted, got: {}",
+            redacted
+        );
+        assert!(
+            redacted.contains("gho_...8B4a"),
+            "gho_ token should use first4...last4 redaction, got: {}",
+            redacted
+        );
+        assert!(
+            !redacted.contains("github_pat_11ABCDEFG0j1ZvFWAy0E_"),
+            "github_pat_ token should be redacted, got: {}",
+            redacted
+        );
+    }
+
+    #[test]
     fn redact_body_redacts_devin_session_token() {
         let body = r#"metadata apiKey=devin-session-token$abcdefghijklmnopqrstuvwxyz123456"#;
         let redacted = redact_body(body);
@@ -519,6 +543,23 @@ mod tests {
         assert!(
             redacted.contains("devi...3456"),
             "Devin session token should use first4...last4 redaction, got: {}",
+            redacted
+        );
+    }
+
+    #[test]
+    fn redact_log_message_redacts_github_tokens() {
+        let msg =
+            "HTTP GET https://api.github.com/user auth=ghp_16C7e42F292c6912E7710c838347Ae178B4a";
+        let redacted = redact_log_message(msg);
+        assert!(
+            !redacted.contains("ghp_16C7e42F292c6912E7710c838347Ae178B4a"),
+            "ghp_ token should be redacted, got: {}",
+            redacted
+        );
+        assert!(
+            redacted.contains("ghp_...8B4a"),
+            "ghp_ token should use first4...last4 redaction, got: {}",
             redacted
         );
     }

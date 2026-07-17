@@ -16,6 +16,12 @@
     return null
   }
 
+  function readNumber(value) {
+    if (typeof value === "string" && !value.trim()) return null
+    const n = typeof value === "string" ? Number(value) : value
+    return typeof n === "number" && Number.isFinite(n) ? n : null
+  }
+
   function fetchSubscription(ctx, apiKey) {
     try {
       const resp = ctx.util.request({
@@ -118,13 +124,13 @@
     }
 
     const tokenLimit = findLimit(limits, "TOKENS_LIMIT", 3)
+    const used = tokenLimit ? readNumber(tokenLimit.percentage) : null
 
-    if (!tokenLimit) {
+    if (used === null) {
       lines.push(ctx.line.badge({ label: "Session", text: "No usage data", color: "#a3a3a3" }))
       return { plan, lines }
     }
 
-    const used = typeof tokenLimit.percentage === "number" ? tokenLimit.percentage : 0
     const resetsAt = tokenLimit.nextResetTime ? ctx.util.toIso(tokenLimit.nextResetTime) : undefined
 
     const progressOpts = {
@@ -140,8 +146,8 @@
     lines.push(ctx.line.progress(progressOpts))
 
     const weeklyTokenLimit = findLimit(limits, "TOKENS_LIMIT", 6)
-    if (weeklyTokenLimit) {
-      const weeklyUsed = Number.isFinite(weeklyTokenLimit.percentage) ? weeklyTokenLimit.percentage : 0
+    const weeklyUsed = weeklyTokenLimit ? readNumber(weeklyTokenLimit.percentage) : null
+    if (weeklyUsed !== null) {
       const weeklyResetsAt = weeklyTokenLimit.nextResetTime ? ctx.util.toIso(weeklyTokenLimit.nextResetTime) : undefined
 
       const weeklyOpts = {
@@ -160,25 +166,27 @@
     const timeLimit = findLimit(limits, "TIME_LIMIT")
 
     if (timeLimit) {
-      const webUsed = typeof timeLimit.currentValue === "number" ? timeLimit.currentValue : 0
-      const webTotal = typeof timeLimit.usage === "number" ? timeLimit.usage : 0
-      const now = new Date()
-      const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
-      const webResetsAt = timeLimit.nextResetTime
-        ? ctx.util.toIso(timeLimit.nextResetTime)
-        : nextMonth.toISOString()
+      const webUsed = readNumber(timeLimit.currentValue)
+      const webTotal = readNumber(timeLimit.usage)
+      if (webUsed !== null && webTotal !== null && webTotal > 0) {
+        const now = new Date()
+        const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+        const webResetsAt = timeLimit.nextResetTime
+          ? ctx.util.toIso(timeLimit.nextResetTime)
+          : nextMonth.toISOString()
 
-      const webOpts = {
-        label: "Web Searches",
-        used: webUsed,
-        limit: webTotal,
-        format: { kind: "count", suffix: "/ " + webTotal },
-        periodDurationMs: MONTH_MS,
+        const webOpts = {
+          label: "Web Searches",
+          used: webUsed,
+          limit: webTotal,
+          format: { kind: "count", suffix: "/ " + webTotal },
+          periodDurationMs: MONTH_MS,
+        }
+        if (webResetsAt) {
+          webOpts.resetsAt = webResetsAt
+        }
+        lines.push(ctx.line.progress(webOpts))
       }
-      if (webResetsAt) {
-        webOpts.resetsAt = webResetsAt
-      }
-      lines.push(ctx.line.progress(webOpts))
     }
 
     return { plan, lines }

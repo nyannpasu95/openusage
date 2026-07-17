@@ -137,9 +137,10 @@ describe("copilot plugin", () => {
     plugin.probe(ctx);
     const call = ctx.host.http.request.mock.calls[0][0];
     expect(call.headers.Authorization).toBe("token ghu_keychain");
+    expect(JSON.parse(ctx.host.fs.readText(ctx.app.pluginDataDir + "/auth.json"))).toBeNull();
   });
 
-  it("persists token from gh-cli to keychain and state file", async () => {
+  it("persists token from gh-cli to keychain only", async () => {
     const ctx = makePluginTestContext();
     setGhCliKeychain(ctx, "gho_persist");
     mockUsageOk(ctx);
@@ -149,10 +150,8 @@ describe("copilot plugin", () => {
       "OpenUsage-copilot",
       JSON.stringify({ token: "gho_persist" }),
     );
-    const stateFile = ctx.host.fs.readText(
-      ctx.app.pluginDataDir + "/auth.json",
-    );
-    expect(JSON.parse(stateFile).token).toBe("gho_persist");
+    // Plaintext state file is only a fallback for keychain write failures.
+    expect(ctx.host.fs.exists(ctx.app.pluginDataDir + "/auth.json")).toBe(false);
   });
 
   it("does not persist token loaded from OhMyUsage keychain", async () => {
@@ -448,6 +447,9 @@ describe("copilot plugin", () => {
     const plugin = await loadPlugin();
     expect(() => plugin.probe(ctx)).not.toThrow();
     expect(ctx.host.log.warn).toHaveBeenCalled();
+    // Falls back to the plaintext state file when the keychain is unavailable.
+    const stateFile = ctx.host.fs.readText(ctx.app.pluginDataDir + "/auth.json");
+    expect(JSON.parse(stateFile).token).toBe("gho_tok");
   });
 
   it("retries with gh-cli token when cached keychain token is stale", async () => {

@@ -25,6 +25,7 @@ gh auth login
 Choose "GitHub.com" and follow the prompts. The plugin will automatically read the token from the gh CLI keychain.
 
 Once authenticated via gh CLI, the plugin caches the token in the OhMyUsage keychain for faster access on subsequent probes.
+When the keychain is available, the plugin clears any token left in the legacy state file. The state file is only used when a keychain write fails.
 
 ## API
 

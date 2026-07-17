@@ -22,15 +22,29 @@
     }
   }
 
+  function clearStateFile(ctx) {
+    const path = ctx.app.pluginDataDir + "/auth.json";
+    try {
+      if (ctx.host.fs.exists(path)) {
+        ctx.host.fs.writeText(path, "null");
+      }
+    } catch (e) {
+      ctx.host.log.warn("clearStateFile failed for " + path + ": " + String(e));
+    }
+  }
+
   function saveToken(ctx, token) {
     try {
       ctx.host.keychain.writeGenericPassword(
         KEYCHAIN_SERVICE,
         JSON.stringify({ token: token }),
       );
+      clearStateFile(ctx);
+      return;
     } catch (e) {
       ctx.host.log.warn("keychain write failed: " + String(e));
     }
+    // Keychain unavailable: fall back to the plaintext state file.
     writeJson(ctx, ctx.app.pluginDataDir + "/auth.json", { token: token });
   }
 
@@ -40,7 +54,7 @@
     } catch (e) {
       ctx.host.log.info("keychain delete failed: " + String(e));
     }
-    writeJson(ctx, ctx.app.pluginDataDir + "/auth.json", null);
+    clearStateFile(ctx);
   }
 
   function loadTokenFromKeychain(ctx) {
@@ -49,6 +63,7 @@
       if (raw) {
         const parsed = ctx.util.tryParseJson(raw);
         if (parsed && parsed.token) {
+          clearStateFile(ctx);
           ctx.host.log.info("token loaded from OhMyUsage keychain");
           return { token: parsed.token, source: "keychain" };
         }
