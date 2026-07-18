@@ -1,5 +1,5 @@
 (function () {
-  const CRED_PATH = "~/.kimi/credentials/kimi-code.json"
+  const CRED_PATH = "~/.kimi-code/credentials/kimi-code.json"
   const USAGE_URL = "https://api.kimi.com/coding/v1/usages"
   const REFRESH_URL = "https://auth.kimi.com/api/oauth/token"
   const CLIENT_ID = "17e5f671-d194-4dfb-9706-5516cb48c098"

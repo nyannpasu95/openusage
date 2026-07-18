@@ -8,7 +8,7 @@
 - **Base URL:** `https://api.kimi.com/coding/v1`
 - **Auth provider:** `https://auth.kimi.com` (OAuth 2.0)
 - **Client ID:** `17e5f671-d194-4dfb-9706-5516cb48c098`
-- **Token store:** `~/.kimi/credentials/kimi-code.json`
+- **Token store:** `~/.kimi-code/credentials/kimi-code.json`
 
 ## Endpoints
 
@@ -81,7 +81,7 @@ refresh_token=<refresh_token>
 
 ## Authentication File
 
-`~/.kimi/credentials/kimi-code.json`
+`~/.kimi-code/credentials/kimi-code.json`
 
 ```jsonc
 {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { makeCtx } from "../test-helpers.js"
 
-const CRED_PATH = "~/.kimi/credentials/kimi-code.json"
+const CRED_PATH = "~/.kimi-code/credentials/kimi-code.json"
 
 const loadPlugin = async () => {
   await import("./plugin.js")
