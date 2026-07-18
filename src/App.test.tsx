@@ -1787,6 +1787,15 @@ describe("App", () => {
     expect(state.savePluginSettingsMock).toHaveBeenCalled()
   })
 
+  it("retries when the tray handle is not created yet", async () => {
+    state.trayGetByIdMock.mockResolvedValueOnce(null)
+
+    render(<App />)
+
+    await waitFor(() => expect(state.trayGetByIdMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(state.traySetTitleMock).toHaveBeenCalledWith("--%"))
+  })
+
   it("logs when tray handle cannot be loaded", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     state.trayGetByIdMock.mockRejectedValueOnce(new Error("no tray"))

@@ -713,4 +713,24 @@ mod tests {
             MAX_CONCURRENT_PROBES
         );
     }
+
+    #[test]
+    fn csp_img_src_allows_blob_urls() {
+        // The menubar usage icon is rendered in the webview by loading an SVG
+        // via a blob: URL (src/lib/tray-bars-icon.ts). The CSP is only injected
+        // in packaged builds, so img-src must allow blob: or the tray icon
+        // silently keeps the default logo instead of showing usage.
+        let conf: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json"))
+                .expect("tauri.conf.json must be valid JSON");
+        let csp = conf["app"]["security"]["csp"]
+            .as_str()
+            .expect("csp must be set in tauri.conf.json");
+        let img_src = csp
+            .split(';')
+            .map(str::trim)
+            .find(|directive| directive.starts_with("img-src"))
+            .expect("csp must contain an img-src directive");
+        assert!(img_src.split_whitespace().any(|source| source == "blob:"));
+    }
 }

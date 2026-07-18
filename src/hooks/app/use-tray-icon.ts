@@ -11,6 +11,9 @@ import type { PluginState } from "@/hooks/app/types"
 
 type TrayUpdateReason = "probe" | "settings" | "init"
 
+const TRAY_HANDLE_RETRY_DELAY_MS = 50
+const TRAY_HANDLE_MAX_ATTEMPTS = 100
+
 type UseTrayIconArgs = {
   pluginsMeta: PluginMeta[]
   pluginSettings: PluginSettings | null
@@ -329,8 +332,23 @@ export function useTrayIcon({
 
     ;(async () => {
       try {
-        const tray = await TrayIcon.getById("tray")
+        let tray: TrayIcon | null = null
+        for (let attempt = 0; attempt < TRAY_HANDLE_MAX_ATTEMPTS && !cancelled; attempt += 1) {
+          tray = await TrayIcon.getById("tray")
+          if (tray) break
+          if (attempt < TRAY_HANDLE_MAX_ATTEMPTS - 1) {
+            await new Promise<void>((resolve) => {
+              window.setTimeout(resolve, TRAY_HANDLE_RETRY_DELAY_MS)
+            })
+          }
+        }
+
         if (cancelled) return
+        if (!tray) {
+          console.error("Failed to load tray icon handle: tray was not created in time")
+          return
+        }
+
         trayRef.current = tray
         trayInitializedRef.current = true
 
