@@ -162,8 +162,8 @@
       const now = toppedUpNow[currency]
       if (now > prev) {
         baseline[currency] = (Number(baseline[currency]) || 0) + (now - prev)
-        lastToppedUp[currency] = now
       }
+      lastToppedUp[currency] = now
     }
 
     const entries = infos

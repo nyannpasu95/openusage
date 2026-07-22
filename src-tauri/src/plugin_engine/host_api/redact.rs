@@ -47,6 +47,8 @@ static SENSITIVE_KEY_RES: LazyLock<Vec<(&'static str, Regex)>> = LazyLock::new(|
         "credential",
         "session_token",
         "sessionToken",
+        "sec_token",
+        "secToken",
         "auth_token",
         "authToken",
         "id_token",
@@ -70,6 +72,14 @@ static SENSITIVE_KEY_RES: LazyLock<Vec<(&'static str, Regex)>> = LazyLock::new(|
         "email",
         "login",
         "analytics_tracking_id",
+        "request_id",
+        "requestId",
+        "instance_id",
+        "instanceId",
+        "InstanceId",
+        "instance_code",
+        "instanceCode",
+        "InstanceCode",
     ]
     .into_iter()
     .map(|key| {
@@ -638,5 +648,31 @@ mod tests {
             "email should still be redacted, got: {}",
             redacted
         );
+    }
+
+    #[test]
+    fn redact_body_redacts_qwen_session_and_instance_fields() {
+        let body = r#"{
+            "secToken":"sec-token-1234567890",
+            "sec_token":"sec-token-0987654321",
+            "requestId":"request-1234567890",
+            "instanceCode":"instance-code-1234567890",
+            "InstanceId":"instance-id-1234567890"
+        }"#;
+        let redacted = redact_body(body);
+
+        for secret in [
+            "sec-token-1234567890",
+            "sec-token-0987654321",
+            "request-1234567890",
+            "instance-code-1234567890",
+            "instance-id-1234567890",
+        ] {
+            assert!(
+                !redacted.contains(secret),
+                "Qwen response field should be redacted, got: {}",
+                redacted
+            );
+        }
     }
 }

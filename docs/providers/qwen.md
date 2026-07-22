@@ -54,7 +54,7 @@ The response payload lives at `data.DataV2.data.data`, gated by `data.DataV2.ret
 
 ### Teams plan (团队版)
 
-On `platform-home.qianwenai.com`: `product=BssOpenAPI-V3`, `action=DescribeFrInstances`, form body additionally carries `language=zh-CN`. One call per commodity code: `sfm_tokenplanteams_dp_cn`, `sfm_tokenplansolo_public_cn`, `sfm_tokenplanpersonal_dp_cn` (legacy), `sfm_tokenplanteamsaddon_dp_cn` (add-on packs). Per instance: `Status.Code` (`"valid"` = active), `InitCapacityBaseValue` (total credits), `CurrCapacityBaseValue` (remaining; `periodCapacityBaseValue` when `CapacityTypeCode` is `periodMonthlyShift`), `EndTime` (epoch ms), `TemplateName`/`CommodityName`.
+On `platform-home.qianwenai.com`: `product=BssOpenAPI-V3`, `action=DescribeFrInstances`, form body additionally carries `language=zh-CN`. One call per commodity code: `sfm_tokenplanteams_dp_cn`, `sfm_tokenplansolo_public_cn`, `sfm_tokenplanpersonal_dp_cn` (legacy), `sfm_tokenplanteamsaddon_dp_cn` (add-on packs). Per instance: `Status.Code` (`"valid"` = active), `InitCapacityBaseValue` (total credits), `CurrCapacityBaseValue` (remaining; `periodCapacityBaseValue` when `CapacityTypeCode` is `periodMonthlyShift`), `EndTime` (epoch ms), `TemplateName`/`CommodityName`. Expired or cancelled instances are ignored. If a main-plan lookup fails and no other lookup finds an active plan, the plugin reports that lookup error instead of claiming there is no subscription.
 
 ## Output
 
@@ -78,7 +78,7 @@ Teams plan:
 | Missing cookie (both sources) | `Qianwen console cookie missing. Copy the Cookie header from platform.qianwenai.com, then run: pbpaste > ~/.openusage/qwen-cookie.txt (or set QWEN_COOKIE).` |
 | HTTP 401/403, 3xx redirect, login HTML, or `ConsoleNeedLogin` payload | `Qianwen console session expired. Copy a fresh Cookie header from platform.qianwenai.com, then run: pbpaste > ~/.openusage/qwen-cookie.txt.` |
 | Other non-2xx | `Token Plan request failed (HTTP {status}). Try again later.` |
-| Network failure on all calls | `Token Plan request failed. Check your connection.` |
+| Network failure while resolving a plan | `Token Plan request failed. Check your connection.` |
 | Unparseable payload | `Token Plan response invalid. Try again later.` |
 | Console business error (non-auth) | `Token Plan API error: {message}` |
 | No plan found on either path | `No active Token Plan subscription found for this account.` |

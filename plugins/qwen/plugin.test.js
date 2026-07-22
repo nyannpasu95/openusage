@@ -273,6 +273,17 @@ describe("qwen plugin", () => {
     expect(result.lines.find((l) => l.label === "Remaining").value).toBe("12,345 credits")
   })
 
+  it("does not display an inactive teams instance as the current plan", async () => {
+    const ctx = ctxWithRoutes({
+      "fr:sfm_tokenplanteams_dp_cn": frEnvelope([
+        makeFrInstance({ Status: { Code: "expired" } }),
+      ]),
+    })
+    const plugin = await loadPlugin()
+
+    expect(() => plugin.probe(ctx)).toThrow("No active Token Plan subscription")
+  })
+
   it("sums valid add-on instances into the Add-on line", async () => {
     const addon = (n, id) =>
       makeFrInstance({
@@ -339,6 +350,16 @@ describe("qwen plugin", () => {
       "fr:sfm_tokenplanteamsaddon_dp_cn": err,
     })
     const plugin = await loadPlugin()
+    expect(() => plugin.probe(ctx)).toThrow("Token Plan request failed (HTTP 500)")
+  })
+
+  it("preserves a primary plan error when the other plan queries are empty", async () => {
+    const err = { status: 500, headers: {}, bodyText: "" }
+    const ctx = ctxWithRoutes({
+      "fr:sfm_tokenplanteams_dp_cn": err,
+    })
+    const plugin = await loadPlugin()
+
     expect(() => plugin.probe(ctx)).toThrow("Token Plan request failed (HTTP 500)")
   })
 

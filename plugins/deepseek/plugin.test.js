@@ -386,6 +386,23 @@ describe("deepseek plugin", () => {
       expect(findLine(result.lines, "Spent Today").value).toBe("¥2.00 CNY")
     })
 
+    it("detects a top-up after the topped-up balance previously decreased", async () => {
+      const ctx = makeCtx()
+      setEnv(ctx, { DEEPSEEK_API_KEY: "ds-key" })
+      const plugin = await loadPlugin()
+      mockBalance(ctx, [cny("100.00", "0.00", "100.00")])
+      plugin.probe(ctx)
+
+      // Spending lowers both total and topped-up balances.
+      mockBalance(ctx, [cny("90.00", "0.00", "90.00")])
+      plugin.probe(ctx)
+
+      // A later 5.00 top-up should preserve the already observed 10.00 spend.
+      mockBalance(ctx, [cny("95.00", "0.00", "95.00")])
+      const result = plugin.probe(ctx)
+      expect(findLine(result.lines, "Spent Today").value).toBe("¥10.00 CNY")
+    })
+
     it("clamps small upward noise to zero instead of showing negative", async () => {
       const ctx = makeCtx()
       setEnv(ctx, { DEEPSEEK_API_KEY: "ds-key" })

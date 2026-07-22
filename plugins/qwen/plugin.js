@@ -418,12 +418,14 @@
   function probeTeams(ctx, cookie, secToken) {
     const results = {}
     let lastError = null
+    let planError = null
     for (let i = 0; i < FR_COMMODITY_CODES.length; i += 1) {
       const entry = FR_COMMODITY_CODES[i]
       try {
         results[entry.key] = fetchFrInstances(ctx, cookie, secToken, entry.code, entry.pageSize)
       } catch (e) {
         lastError = e
+        if (entry.key !== "addon") planError = e
         ctx.host.log.warn("DescribeFrInstances failed for " + entry.code + ": " + String(e))
       }
     }
@@ -441,7 +443,6 @@
         break
       }
     }
-    if (!chosen && planInstances.length > 0) chosen = planInstances[0]
 
     let addonRemaining = 0
     const addons = results.addon || []
@@ -452,6 +453,7 @@
     }
 
     if (!chosen) {
+      if (planError) return { error: planError }
       if (addonRemaining > 0) {
         return {
           lines: [

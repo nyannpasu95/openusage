@@ -61,8 +61,8 @@ where `baseline` is the total balance seen on the **first refresh of the local d
 
 Limitations of this method:
 
-- **Only app-running time counts.** If the app is closed for part of the day, any spend during that window is missed — the baseline is whatever the app first sees that day.
-- **Top-ups are compensated.** A rising `topped_up_balance` within the same day is treated as a recharge and raises the baseline by the same amount, so it is not counted as negative spend.
+- **Spending before the first refresh is missed.** The baseline is whatever the app first sees that day. After that baseline is saved, later refreshes include the net balance change even if the app was closed between them.
+- **Top-ups are compensated from consecutive snapshots.** A rise in `topped_up_balance` since the previous refresh raises the baseline by the same amount. If spending and a top-up both happen between two refreshes, the API exposes only their net balance change, so the estimate can still be low.
 - **Granted-balance expiry is miscounted.** DeepSeek's API does not distinguish a granted-credit expiry from real consumption, so an expiring granted balance shows up as apparent spend. The plugin does not try to correct this.
 - **Small upward drift is clamped to 0** so transient noise never appears as negative spend.
 - **First refresh of a new day shows nothing** (no baseline yet); from the second refresh onward the value appears.
