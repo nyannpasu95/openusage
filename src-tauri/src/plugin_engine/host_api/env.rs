@@ -1,6 +1,6 @@
 use super::*;
 
-pub(crate) const WHITELISTED_ENV_VARS: [&str; 17] = [
+pub(crate) const WHITELISTED_ENV_VARS: [&str; 18] = [
     "CODEX_HOME",
     "CLAUDE_CONFIG_DIR",
     "CLAUDE_CODE_OAUTH_TOKEN",
@@ -18,6 +18,7 @@ pub(crate) const WHITELISTED_ENV_VARS: [&str; 17] = [
     "SYNTHETIC_API_KEY",
     "PI_CODING_AGENT_DIR",
     "DEEPSEEK_API_KEY",
+    "QWEN_COOKIE",
 ];
 
 pub(crate) fn last_non_empty_trimmed_line(text: &str) -> Option<String> {
@@ -290,6 +291,11 @@ mod tests {
         assert!(
             WHITELISTED_ENV_VARS.contains(&"DEEPSEEK_API_KEY"),
             "DEEPSEEK_API_KEY must be whitelisted for the DeepSeek balance plugin"
+        );
+
+        assert!(
+            WHITELISTED_ENV_VARS.contains(&"QWEN_COOKIE"),
+            "QWEN_COOKIE must be whitelisted for the Qwen Token Plan plugin"
         );
 
         let rt = Runtime::new().expect("runtime");

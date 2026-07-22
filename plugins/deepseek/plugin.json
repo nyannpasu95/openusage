@@ -14,6 +14,7 @@
     { "type": "badge", "label": "Status", "scope": "overview" },
     { "type": "text", "label": "Balance", "scope": "overview" },
     { "type": "text", "label": "Granted", "scope": "detail" },
-    { "type": "text", "label": "Topped Up", "scope": "detail" }
+    { "type": "text", "label": "Topped Up", "scope": "detail" },
+    { "type": "text", "label": "Spent Today", "scope": "detail" }
   ]
 }

@@ -42,6 +42,7 @@ OhMyUsage lives in your menu bar and shows you how much of your AI coding subscr
 - [**MiniMax**](docs/providers/minimax.md) / coding plan session
 - [**OpenCode Go**](docs/providers/opencode-go.md) / 5h, weekly, monthly spend limits
 - [**Perplexity**](docs/providers/perplexity.md) / queries, deep research, labs, API credits
+- [**Qwen Token Plan**](docs/providers/qwen.md) / individual 5h & weekly quota, teams credits
 - [**Devin**](docs/providers/devin.md) / weekly quota, extra usage
 - [**Synthetic**](docs/providers/synthetic.md) / rate limits, subscription, tool calls, search
 - [**Z.ai**](docs/providers/zai.md) / session, weekly, web searches

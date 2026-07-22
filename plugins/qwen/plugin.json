@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "qwen",
+  "name": "Qwen Token Plan",
+  "version": "0.0.1",
+  "entry": "plugin.js",
+  "icon": "icon.svg",
+  "brandColor": "#3047F5",
+  "links": [
+    {
+      "label": "Token Plan",
+      "url": "https://platform.qianwenai.com/home/billing/subscription/token-plan-individual"
+    }
+  ],
+  "lines": [
+    { "type": "progress", "label": "Session", "scope": "overview", "primaryOrder": 1 },
+    { "type": "progress", "label": "Weekly", "scope": "overview", "primaryOrder": 2, "period": "weekly" },
+    { "type": "progress", "label": "Credits", "scope": "overview" },
+    { "type": "text", "label": "Remaining", "scope": "detail" },
+    { "type": "text", "label": "Add-on", "scope": "detail" },
+    { "type": "text", "label": "Expires", "scope": "detail" }
+  ]
+}

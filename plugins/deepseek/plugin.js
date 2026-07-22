@@ -1,5 +1,6 @@
 (function () {
   const BALANCE_URL = "https://api.deepseek.com/user/balance"
+  const SPENT_STATE_FILE = "spent-today.json"
 
   function loadApiKey(ctx) {
     let value = null
@@ -82,6 +83,117 @@
       .join(" + ")
   }
 
+  // --- Spent Today (approximate, via balance delta) ---
+  // DeepSeek's API exposes only a point-in-time balance snapshot, no per-day
+  // usage. We approximate "spent today" by remembering the first balance seen
+  // for the local day and subtracting the current balance. See
+  // docs/providers/deepseek.md for the limitations of this approach.
+
+  function dayKeyFromDate(date) {
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    return year + "-" + (month < 10 ? "0" : "") + month + "-" + (day < 10 ? "0" : "") + day
+  }
+
+  function balanceByCurrency(infos, fieldName) {
+    const out = {}
+    for (const info of infos) {
+      const currency = typeof info.currency === "string" ? info.currency : ""
+      const raw = info[fieldName]
+      const num = Number.parseFloat(String(raw))
+      out[currency] = Number.isFinite(num) ? num : 0
+    }
+    return out
+  }
+
+  function spentStatePath(ctx) {
+    return ctx.app.pluginDataDir + "/" + SPENT_STATE_FILE
+  }
+
+  function readSpentState(ctx) {
+    const path = spentStatePath(ctx)
+    try {
+      if (!ctx.host.fs.exists(path)) return null
+      const data = ctx.util.tryParseJson(ctx.host.fs.readText(path))
+      if (!data || typeof data !== "object") return null
+      return data
+    } catch (e) {
+      ctx.host.log.warn("spent-today state read failed: " + String(e))
+      return null
+    }
+  }
+
+  function writeSpentState(ctx, state) {
+    try {
+      ctx.host.fs.writeText(spentStatePath(ctx), JSON.stringify(state))
+    } catch (e) {
+      ctx.host.log.warn("spent-today state write failed: " + String(e))
+    }
+  }
+
+  // Returns { pending: true } when no baseline exists yet for today, otherwise
+  // { pending: false, value: "<formatted multi-currency spend>" }.
+  function computeSpentToday(ctx, infos) {
+    const todayKey = dayKeyFromDate(new Date())
+    const totalNow = balanceByCurrency(infos, "total_balance")
+    const toppedUpNow = balanceByCurrency(infos, "topped_up_balance")
+    const state = readSpentState(ctx)
+
+    const isToday = state && state.day === todayKey && state.baseline && state.lastToppedUp
+
+    if (!isToday) {
+      // First probe of the day (or first ever): record baseline, no spend yet.
+      writeSpentState(ctx, {
+        day: todayKey,
+        baseline: totalNow,
+        lastToppedUp: toppedUpNow,
+      })
+      return { pending: true }
+    }
+
+    // Compensate top-ups within the same day: a rising topped_up_balance means
+    // the user added funds, which must not count as negative spend. Raise the
+    // baseline by the same delta so spend stays accurate.
+    const baseline = Object.assign({}, state.baseline)
+    const lastToppedUp = Object.assign({}, state.lastToppedUp)
+    for (const currency of Object.keys(toppedUpNow)) {
+      const prev = Number(lastToppedUp[currency]) || 0
+      const now = toppedUpNow[currency]
+      if (now > prev) {
+        baseline[currency] = (Number(baseline[currency]) || 0) + (now - prev)
+        lastToppedUp[currency] = now
+      }
+    }
+
+    const entries = infos
+      .map((info) => {
+        const currency = typeof info.currency === "string" ? info.currency : ""
+        const base = Number(baseline[currency])
+        const now = Number(totalNow[currency])
+        if (!Number.isFinite(base) || !Number.isFinite(now)) return null
+        let spent = base - now
+        if (spent < 0) spent = 0 // clamp small noise / untracked movements
+        return { spent: spent.toFixed(2), currency }
+      })
+      .filter((entry) => entry !== null)
+
+    const nonZero = entries.filter((entry) => hasNonZeroAmount(entry.spent))
+    const visible = nonZero.length > 0 ? nonZero : entries
+    const value =
+      visible.length > 0
+        ? visible.map((entry) => formatAmount(entry.spent, entry.currency)).join(" + ")
+        : "—"
+
+    writeSpentState(ctx, {
+      day: todayKey,
+      baseline,
+      lastToppedUp,
+    })
+
+    return { pending: false, value }
+  }
+
   function probe(ctx) {
     const apiKey = loadApiKey(ctx)
     if (!apiKey) {
@@ -107,6 +219,11 @@
     lines.push(ctx.line.text({ label: "Balance", value: formatBalanceList(infos, "total_balance") }))
     lines.push(ctx.line.text({ label: "Granted", value: formatBalanceList(infos, "granted_balance") }))
     lines.push(ctx.line.text({ label: "Topped Up", value: formatBalanceList(infos, "topped_up_balance") }))
+
+    const spent = computeSpentToday(ctx, infos)
+    if (!spent.pending) {
+      lines.push(ctx.line.text({ label: "Spent Today", value: spent.value }))
+    }
 
     return { lines }
   }
