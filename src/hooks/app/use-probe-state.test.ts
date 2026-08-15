@@ -2,8 +2,7 @@ import { renderHook, act } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { useProbeState } from "@/hooks/app/use-probe-state"
 
-describe("useProbeState", () => {
-  it("updates pluginStatesRef synchronously when marking plugins loading", () => {
+describe("useProbeState", () => {  it("updates pluginStatesRef synchronously when marking plugins loading", () => {
     const { result } = renderHook(() => useProbeState({}))
 
     let loadingImmediatelyAfterSet: boolean | undefined
@@ -65,5 +64,28 @@ describe("useProbeState", () => {
       previousData: secondOutput,
       successful: false,
     })
+  })
+
+  it("recovers plugins whose results were lost in transit", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    const { result } = renderHook(() => useProbeState({}))
+
+    act(() => {
+      result.current.setLoadingForPlugins(["codex"])
+      result.current.manualRefreshIdsRef.current.add("codex")
+    })
+    expect(result.current.pluginStatesRef.current.codex?.loading).toBe(true)
+
+    act(() => {
+      result.current.markResultsLost(["codex"])
+    })
+
+    expect(result.current.pluginStatesRef.current.codex?.loading).toBe(false)
+    expect(result.current.pluginStatesRef.current.codex?.error).toBe(
+      "Couldn't update data. Retrying automatically."
+    )
+    expect(result.current.manualRefreshIdsRef.current.has("codex")).toBe(false)
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 })

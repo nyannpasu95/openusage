@@ -72,6 +72,18 @@ export function useProbeState({ onProbeResult }: UseProbeStateArgs) {
     })
   }, [updatePluginStates])
 
+  const markResultsLost = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return
+      console.error(`Probe results lost in transit for plugins: ${ids.join(", ")}`)
+      for (const id of ids) {
+        manualRefreshIdsRef.current.delete(id)
+      }
+      setErrorForPlugins(ids, "Couldn't update data. Retrying automatically.")
+    },
+    [setErrorForPlugins]
+  )
+
   const handleProbeResult = useCallback(
     (output: PluginOutput, batchId: string) => {
       const errorMessage = getErrorMessage(output)
@@ -115,6 +127,7 @@ export function useProbeState({ onProbeResult }: UseProbeStateArgs) {
     manualRefreshIdsRef,
     setLoadingForPlugins,
     setErrorForPlugins,
+    markResultsLost,
     handleProbeResult,
   }
 }

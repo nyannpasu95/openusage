@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react"
-import { describe, expect, it, vi, beforeEach } from "vitest"
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
 import type { PluginOutput } from "@/lib/plugin-types"
 
 const { listeners, invokeMock, listenMock } = vi.hoisted(() => ({
@@ -18,6 +18,13 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 import { useProbeEvents } from "@/hooks/use-probe-events"
 
+const pluginOutput = (providerId: string): PluginOutput => ({
+  providerId,
+  displayName: providerId.toUpperCase(),
+  lines: [],
+  iconUrl: "",
+})
+
 describe("useProbeEvents", () => {
   beforeEach(() => {
     listeners.clear()
@@ -27,6 +34,10 @@ describe("useProbeEvents", () => {
       listeners.set(event, cb)
       return () => listeners.delete(event)
     })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it("starts batch and returns plugin ids", async () => {
@@ -129,7 +140,7 @@ describe("useProbeEvents", () => {
     expect(onResult).toHaveBeenCalledWith(output, batchId)
 
     completeListener?.({ payload: { batchId } })
-    expect(onBatchComplete).toHaveBeenCalledWith(batchId)
+    expect(onBatchComplete).toHaveBeenCalledWith(batchId, [])
 
     resultListener?.({ payload: { batchId, output } })
     expect(onResult).toHaveBeenCalledTimes(1)
@@ -157,11 +168,86 @@ describe("useProbeEvents", () => {
 
   it("rejects when invoke fails", async () => {
     invokeMock.mockRejectedValueOnce(new Error("boom"))
+    const onBatchComplete = vi.fn()
     const { result } = renderHook(() =>
-      useProbeEvents({ onResult: vi.fn(), onBatchComplete: vi.fn() })
+      useProbeEvents({ onResult: vi.fn(), onBatchComplete })
     )
 
     await expect(result.current.startBatch(["a"])).rejects.toThrow("boom")
+    expect(onBatchComplete).not.toHaveBeenCalled()
+  })
+
+  it("reports plugins as lost when batch-complete arrives without their results", async () => {
+    vi.useFakeTimers()
+    let lastArgs: any = null
+    invokeMock.mockImplementation(async (_cmd: string, args: any) => {
+      lastArgs = args
+      return { batchId: args.batchId, pluginIds: args.pluginIds ?? [] }
+    })
+    const onResult = vi.fn()
+    const onBatchComplete = vi.fn()
+    const { result } = renderHook(() => useProbeEvents({ onResult, onBatchComplete }))
+
+    await act(() => result.current.startBatch(["a", "b"]))
+    const batchId = lastArgs.batchId
+
+    listeners.get("probe:result")?.({ payload: { batchId, output: pluginOutput("a") } })
+    listeners.get("probe:batch-complete")?.({ payload: { batchId } })
+
+    expect(onBatchComplete).toHaveBeenCalledWith(batchId, ["b"])
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(120_000)
+    })
+    expect(onBatchComplete).toHaveBeenCalledTimes(1)
+  })
+
+  it("recovers via the watchdog when the batch-complete event is lost", async () => {
+    vi.useFakeTimers()
+    let lastArgs: any = null
+    invokeMock.mockImplementation(async (_cmd: string, args: any) => {
+      lastArgs = args
+      return { batchId: args.batchId, pluginIds: args.pluginIds ?? [] }
+    })
+    const onResult = vi.fn()
+    const onBatchComplete = vi.fn()
+    const { result } = renderHook(() => useProbeEvents({ onResult, onBatchComplete }))
+
+    await act(() => result.current.startBatch(["a", "b"]))
+    const batchId = lastArgs.batchId
+
+    listeners.get("probe:result")?.({ payload: { batchId, output: pluginOutput("a") } })
+
+    // No batch-complete is delivered; the watchdog must fire instead.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_001)
+    })
+    expect(onBatchComplete).toHaveBeenCalledWith(batchId, ["b"])
+
+    // Late delivery still works: results land and a duplicate complete does
+    // not re-report the already-recovered plugin as lost.
+    listeners.get("probe:result")?.({ payload: { batchId, output: pluginOutput("b") } })
+    expect(onResult).toHaveBeenCalledTimes(2)
+    listeners.get("probe:batch-complete")?.({ payload: { batchId } })
+    expect(onBatchComplete).toHaveBeenLastCalledWith(batchId, [])
+    expect(onBatchComplete).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not track reconciliation for batches without explicit plugin ids", async () => {
+    vi.useFakeTimers()
+    let lastArgs: any = null
+    invokeMock.mockImplementation(async (_cmd: string, args: any) => {
+      lastArgs = args
+      return { batchId: args.batchId, pluginIds: [] }
+    })
+    const onBatchComplete = vi.fn()
+    const { result } = renderHook(() =>
+      useProbeEvents({ onResult: vi.fn(), onBatchComplete })
+    )
+
+    await act(() => result.current.startBatch())
+    listeners.get("probe:batch-complete")?.({ payload: { batchId: lastArgs.batchId } })
+    expect(onBatchComplete).toHaveBeenCalledWith(lastArgs.batchId, [])
   })
 
   it("cancels before listeners are ready", async () => {

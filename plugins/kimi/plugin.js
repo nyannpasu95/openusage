@@ -4,6 +4,8 @@
   const REFRESH_URL = "https://auth.kimi.com/api/oauth/token"
   const CLIENT_ID = "17e5f671-d194-4dfb-9706-5516cb48c098"
   const REFRESH_BUFFER_SEC = 5 * 60
+  const FIXED_POINT_CENTS = 1e6
+  const MONTHLY_OVERRIDE_PATH = "~/.openusage/kimi-monthly.json"
 
   function readNumber(value) {
     const n = Number(value)
@@ -177,6 +179,75 @@
     }
   }
 
+  function parseBoosterMonthlyCap(data) {
+    const wallet = data && typeof data.boosterWallet === "object" ? data.boosterWallet : null
+    if (!wallet || wallet.monthlyChargeLimitEnabled !== true) return null
+
+    const limitMoney = wallet.monthlyChargeLimit
+    const limit = limitMoney ? readNumber(limitMoney.priceInCents) : null
+    if (limit === null || limit <= 0) return null
+
+    const usedMoney = wallet.monthlyUsed
+    const used = (usedMoney && readNumber(usedMoney.priceInCents)) || 0
+
+    return { used, limit, resetsAt: null }
+  }
+
+  function parseBoosterBalance(data) {
+    const wallet = data && typeof data.boosterWallet === "object" ? data.boosterWallet : null
+    if (!wallet) return null
+
+    const balance = wallet.balance && typeof wallet.balance === "object" ? wallet.balance : null
+    if (!balance || balance.type !== "BOOSTER") return null
+
+    const amount = readNumber(balance.amount)
+    if (amount === null || amount <= 0) return null
+
+    const amountLeft = readNumber(balance.amountLeft)
+    const cents = amountLeft === null ? 0 : Math.round(amountLeft / FIXED_POINT_CENTS)
+
+    const limitMoney = wallet.monthlyChargeLimit
+    const usedMoney = wallet.monthlyUsed
+    const currency =
+      (limitMoney && typeof limitMoney.currency === "string" && limitMoney.currency) ||
+      (usedMoney && typeof usedMoney.currency === "string" && usedMoney.currency) ||
+      "USD"
+
+    return { cents, currency }
+  }
+
+  function formatMoney(cents, currency) {
+    const upper = String(currency || "").toUpperCase()
+    const symbol = upper === "CNY" ? "¥" : upper === "USD" ? "$" : ""
+    const formatted = (cents / 100).toFixed(2)
+    return symbol ? symbol + formatted : formatted + " " + String(currency || "")
+  }
+
+  // TEMPORARY manual fill: /usages never populates totalQuota today (see
+  // docs/providers/kimi.md), so the monthly total can be supplied via a local
+  // JSON file. API data wins when present. Remove once totalQuota goes live.
+  function loadMonthlyOverride(ctx) {
+    if (!ctx.host.fs.exists(MONTHLY_OVERRIDE_PATH)) return null
+
+    const parsed = ctx.util.tryParseJson(ctx.host.fs.readText(MONTHLY_OVERRIDE_PATH))
+    if (!parsed || typeof parsed !== "object") {
+      ctx.host.log.warn("monthly override is not valid json")
+      return null
+    }
+
+    const used = readNumber(parsed.usedPercent)
+    if (used === null || used < 0 || used > 100) {
+      ctx.host.log.warn("monthly override needs usedPercent between 0 and 100")
+      return null
+    }
+
+    return {
+      used: Math.round(used * 10) / 10,
+      limit: 100,
+      resetsAt: ctx.util.toIso(parsed.resetsAt) || undefined,
+    }
+  }
+
   function toPercentUsage(quota) {
     if (!quota || quota.limit <= 0) return null
     const usedPercent = (quota.used / quota.limit) * 100
@@ -342,6 +413,42 @@
           })
         )
       }
+    }
+
+    const monthlyPercent =
+      toPercentUsage(parseQuota(data.totalQuota, ctx)) || loadMonthlyOverride(ctx)
+    if (monthlyPercent) {
+      lines.push(
+        ctx.line.progress({
+          label: "Monthly",
+          used: monthlyPercent.used,
+          limit: monthlyPercent.limit,
+          format: { kind: "percent" },
+          resetsAt: monthlyPercent.resetsAt || undefined,
+        })
+      )
+    }
+
+    const boosterPercent = toPercentUsage(parseBoosterMonthlyCap(data))
+    if (boosterPercent) {
+      lines.push(
+        ctx.line.progress({
+          label: "Extra Usage",
+          used: boosterPercent.used,
+          limit: boosterPercent.limit,
+          format: { kind: "percent" },
+        })
+      )
+    }
+
+    const boosterBalance = parseBoosterBalance(data)
+    if (boosterBalance) {
+      lines.push(
+        ctx.line.text({
+          label: "Balance",
+          value: formatMoney(boosterBalance.cents, boosterBalance.currency),
+        })
+      )
     }
 
     if (lines.length === 0) {

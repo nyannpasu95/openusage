@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { makeCtx } from "../test-helpers.js"
 
 const CRED_PATH = "~/.kimi-code/credentials/kimi-code.json"
+const MONTHLY_OVERRIDE_PATH = "~/.openusage/kimi-monthly.json"
 
 const loadPlugin = async () => {
   await import("./plugin.js")
@@ -615,5 +616,262 @@ describe("kimi plugin", () => {
     const weekly = result.lines.find((line) => line.label === "Weekly")
     expect(weekly).toBeTruthy()
     expect(weekly.used).toBe(25)
+  })
+
+  it("renders monthly line from totalQuota when present", async () => {
+    const ctx = makeCtx()
+    const nowSec = Math.floor(Date.now() / 1000)
+    ctx.host.fs.writeText(
+      CRED_PATH,
+      JSON.stringify({
+        access_token: "token",
+        expires_at: nowSec + 3600,
+      })
+    )
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      bodyText: JSON.stringify({
+        usage: { limit: "100", remaining: "74", resetTime: "2099-02-11T00:00:00Z" },
+        limits: [
+          {
+            window: { duration: 300, timeUnit: "TIME_UNIT_MINUTE" },
+            detail: { limit: "100", remaining: "85", resetTime: "2099-02-07T00:00:00Z" },
+          },
+        ],
+        totalQuota: { limit: "400", used: "100", resetTime: "2099-03-01T00:00:00Z" },
+      }),
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+    const monthly = result.lines.find((line) => line.label === "Monthly")
+    expect(monthly).toBeTruthy()
+    expect(monthly.used).toBe(25)
+    expect(monthly.resetsAt).toContain("2099-03-01")
+  })
+
+  it("omits monthly line when totalQuota is empty", async () => {
+    const ctx = makeCtx()
+    const nowSec = Math.floor(Date.now() / 1000)
+    ctx.host.fs.writeText(
+      CRED_PATH,
+      JSON.stringify({
+        access_token: "token",
+        expires_at: nowSec + 3600,
+      })
+    )
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      bodyText: JSON.stringify({
+        usage: { limit: "100", remaining: "74", resetTime: "2099-02-11T00:00:00Z" },
+        limits: [],
+        totalQuota: {},
+      }),
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+    expect(result.lines.find((line) => line.label === "Monthly")).toBeUndefined()
+    expect(result.lines.find((line) => line.label === "Extra Usage")).toBeUndefined()
+  })
+
+  it("renders extra usage line from boosterWallet monthly charge limit", async () => {
+    const ctx = makeCtx()
+    const nowSec = Math.floor(Date.now() / 1000)
+    ctx.host.fs.writeText(
+      CRED_PATH,
+      JSON.stringify({
+        access_token: "token",
+        expires_at: nowSec + 3600,
+      })
+    )
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      bodyText: JSON.stringify({
+        usage: { limit: "100", remaining: "74", resetTime: "2099-02-11T00:00:00Z" },
+        limits: [],
+        boosterWallet: {
+          balance: { type: "BOOSTER", amount: "2500000000", amountLeft: "1000000000" },
+          monthlyChargeLimitEnabled: true,
+          monthlyChargeLimit: { priceInCents: "5000", currency: "CNY" },
+          monthlyUsed: { priceInCents: "1250", currency: "CNY" },
+        },
+      }),
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+    const extra = result.lines.find((line) => line.label === "Extra Usage")
+    expect(extra).toBeTruthy()
+    expect(extra.used).toBe(25)
+    const balance = result.lines.find((line) => line.label === "Balance")
+    expect(balance).toBeTruthy()
+    expect(balance.value).toBe("¥10.00")
+  })
+
+  it("renders balance with currency suffix for unknown currencies", async () => {
+    const ctx = makeCtx()
+    const nowSec = Math.floor(Date.now() / 1000)
+    ctx.host.fs.writeText(
+      CRED_PATH,
+      JSON.stringify({
+        access_token: "token",
+        expires_at: nowSec + 3600,
+      })
+    )
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      bodyText: JSON.stringify({
+        usage: { limit: "100", remaining: "74", resetTime: "2099-02-11T00:00:00Z" },
+        limits: [],
+        boosterWallet: {
+          balance: { type: "BOOSTER", amount: "2500000000", amountLeft: "123456789" },
+          monthlyChargeLimitEnabled: false,
+          monthlyUsed: { priceInCents: "0", currency: "EUR" },
+        },
+      }),
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+    expect(result.lines.find((line) => line.label === "Extra Usage")).toBeUndefined()
+    const balance = result.lines.find((line) => line.label === "Balance")
+    expect(balance).toBeTruthy()
+    expect(balance.value).toBe("1.23 EUR")
+  })
+
+  it("omits extra usage line when monthly charge limit is disabled", async () => {
+    const ctx = makeCtx()
+    const nowSec = Math.floor(Date.now() / 1000)
+    ctx.host.fs.writeText(
+      CRED_PATH,
+      JSON.stringify({
+        access_token: "token",
+        expires_at: nowSec + 3600,
+      })
+    )
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      bodyText: JSON.stringify({
+        usage: { limit: "100", remaining: "74", resetTime: "2099-02-11T00:00:00Z" },
+        limits: [],
+        boosterWallet: {
+          balance: { type: "BOOSTER", amount: "2500000000", amountLeft: "1000000000" },
+          monthlyChargeLimitEnabled: false,
+        },
+      }),
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+    expect(result.lines.find((line) => line.label === "Extra Usage")).toBeUndefined()
+  })
+
+  it("falls back to monthly override file when totalQuota is empty", async () => {
+    const ctx = makeCtx()
+    const nowSec = Math.floor(Date.now() / 1000)
+    ctx.host.fs.writeText(
+      CRED_PATH,
+      JSON.stringify({
+        access_token: "token",
+        expires_at: nowSec + 3600,
+      })
+    )
+    ctx.host.fs.writeText(
+      MONTHLY_OVERRIDE_PATH,
+      JSON.stringify({ usedPercent: 92.6, resetsAt: "2099-08-17T00:00:00Z" })
+    )
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      bodyText: JSON.stringify({
+        usage: { limit: "100", remaining: "74", resetTime: "2099-02-11T00:00:00Z" },
+        limits: [],
+        totalQuota: {},
+      }),
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+    const monthly = result.lines.find((line) => line.label === "Monthly")
+    expect(monthly).toBeTruthy()
+    expect(monthly.used).toBe(92.6)
+    expect(monthly.resetsAt).toContain("2099-08-17")
+  })
+
+  it("prefers totalQuota over the monthly override file", async () => {
+    const ctx = makeCtx()
+    const nowSec = Math.floor(Date.now() / 1000)
+    ctx.host.fs.writeText(
+      CRED_PATH,
+      JSON.stringify({
+        access_token: "token",
+        expires_at: nowSec + 3600,
+      })
+    )
+    ctx.host.fs.writeText(MONTHLY_OVERRIDE_PATH, JSON.stringify({ usedPercent: 92.6 }))
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      bodyText: JSON.stringify({
+        usage: { limit: "100", remaining: "74", resetTime: "2099-02-11T00:00:00Z" },
+        limits: [],
+        totalQuota: { limit: "400", used: "100", resetTime: "2099-03-01T00:00:00Z" },
+      }),
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+    const monthly = result.lines.find((line) => line.label === "Monthly")
+    expect(monthly).toBeTruthy()
+    expect(monthly.used).toBe(25)
+  })
+
+  it("ignores monthly override with out-of-range usedPercent", async () => {
+    const ctx = makeCtx()
+    const nowSec = Math.floor(Date.now() / 1000)
+    ctx.host.fs.writeText(
+      CRED_PATH,
+      JSON.stringify({
+        access_token: "token",
+        expires_at: nowSec + 3600,
+      })
+    )
+    ctx.host.fs.writeText(MONTHLY_OVERRIDE_PATH, JSON.stringify({ usedPercent: 150 }))
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      bodyText: JSON.stringify({
+        usage: { limit: "100", remaining: "74", resetTime: "2099-02-11T00:00:00Z" },
+        limits: [],
+        totalQuota: {},
+      }),
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+    expect(result.lines.find((line) => line.label === "Monthly")).toBeUndefined()
+  })
+
+  it("ignores malformed monthly override file", async () => {
+    const ctx = makeCtx()
+    const nowSec = Math.floor(Date.now() / 1000)
+    ctx.host.fs.writeText(
+      CRED_PATH,
+      JSON.stringify({
+        access_token: "token",
+        expires_at: nowSec + 3600,
+      })
+    )
+    ctx.host.fs.writeText(MONTHLY_OVERRIDE_PATH, "{")
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      bodyText: JSON.stringify({
+        usage: { limit: "100", remaining: "74", resetTime: "2099-02-11T00:00:00Z" },
+        limits: [],
+        totalQuota: {},
+      }),
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+    expect(result.lines.find((line) => line.label === "Monthly")).toBeUndefined()
   })
 })

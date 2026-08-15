@@ -126,4 +126,38 @@ describe("useProbeAutoUpdate", () => {
     expect(startBatch).not.toHaveBeenCalled()
     expect(setErrorForPlugins).not.toHaveBeenCalled()
   })
+
+  it("catches up immediately when the schedule is overdue after a wake time jump", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(10_000)
+
+    const setLoadingForPlugins = vi.fn()
+    const setErrorForPlugins = vi.fn()
+    const startBatch = vi.fn().mockResolvedValue(["codex"])
+
+    const { result } = renderHook(() =>
+      useProbeAutoUpdate({
+        pluginSettings: { order: ["codex"], disabled: [] },
+        autoUpdateInterval: 15,
+        setLoadingForPlugins,
+        setErrorForPlugins,
+        isPluginLoading: vi.fn(() => false),
+        startBatch,
+      })
+    )
+
+    expect(result.current.autoUpdateNextAt).toBe(910_000)
+
+    // Simulate a system wake: wall clock jumps forward while barely any timer
+    // time elapsed, so the main interval is not due yet.
+    vi.setSystemTime(10_000 + 20 * 60_000)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000)
+    })
+
+    expect(startBatch).toHaveBeenCalledTimes(1)
+    expect(startBatch).toHaveBeenCalledWith(["codex"])
+    // Rescheduled from the catch-up fire time (1_210_000 + 15s of timer time).
+    expect(result.current.autoUpdateNextAt).toBe(2_125_000)
+  })
 })

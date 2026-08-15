@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   getEnabledPluginIds,
   type AutoUpdateIntervalMinutes,
   type PluginSettings,
 } from "@/lib/settings"
+
+// setInterval pauses while the system sleeps and fires late when the webview
+// is throttled, so a short catch-up check bounds staleness after a wake.
+const CATCH_UP_CHECK_MS = 15_000
 
 type UseProbeAutoUpdateArgs = {
   pluginSettings: PluginSettings | null
@@ -22,8 +26,16 @@ export function useProbeAutoUpdate({
   isPluginLoading,
   startBatch,
 }: UseProbeAutoUpdateArgs) {
-  const [autoUpdateNextAt, setAutoUpdateNextAt] = useState<number | null>(null)
+  const [autoUpdateNextAt, setAutoUpdateNextAtState] = useState<number | null>(null)
   const [autoUpdateResetToken, setAutoUpdateResetToken] = useState(0)
+  const nextAtRef = useRef<number | null>(null)
+
+  // Mirror every schedule write into a ref so the catch-up interval sees the
+  // latest next-at without depending on the state value.
+  const setAutoUpdateNextAt = useCallback((value: number | null) => {
+    nextAtRef.current = value
+    setAutoUpdateNextAtState(value)
+  }, [])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: The reset token intentionally restarts the interval without being read inside the effect.
   useEffect(() => {
@@ -42,7 +54,7 @@ export function useProbeAutoUpdate({
     const scheduleNext = () => setAutoUpdateNextAt(Date.now() + intervalMs)
     scheduleNext()
 
-    const interval = setInterval(() => {
+    const runTick = () => {
       const idleIds = enabledIds.filter((id) => !isPluginLoading(id))
       if (idleIds.length === 0) {
         scheduleNext()
@@ -55,9 +67,20 @@ export function useProbeAutoUpdate({
         setErrorForPlugins(idleIds, "Failed to start probe")
       })
       scheduleNext()
-    }, intervalMs)
+    }
 
-    return () => clearInterval(interval)
+    const interval = setInterval(runTick, intervalMs)
+    const catchUpInterval = setInterval(() => {
+      const nextAt = nextAtRef.current
+      if (nextAt !== null && Date.now() >= nextAt) {
+        runTick()
+      }
+    }, CATCH_UP_CHECK_MS)
+
+    return () => {
+      clearInterval(interval)
+      clearInterval(catchUpInterval)
+    }
   }, [
     autoUpdateInterval,
     autoUpdateResetToken,
@@ -65,6 +88,7 @@ export function useProbeAutoUpdate({
     isPluginLoading,
     setLoadingForPlugins,
     setErrorForPlugins,
+    setAutoUpdateNextAt,
     startBatch,
   ])
 
@@ -80,7 +104,7 @@ export function useProbeAutoUpdate({
 
     setAutoUpdateNextAt(Date.now() + autoUpdateInterval * 60_000)
     setAutoUpdateResetToken((value) => value + 1)
-  }, [autoUpdateInterval, pluginSettings])
+  }, [autoUpdateInterval, pluginSettings, setAutoUpdateNextAt])
 
   return {
     autoUpdateNextAt,

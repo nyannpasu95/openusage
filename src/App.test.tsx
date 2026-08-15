@@ -227,11 +227,12 @@ vi.mock("@/lib/tray-bars-icon", async () => {
 vi.mock("@/hooks/use-probe-events", () => ({
   useProbeEvents: (handlers: {
     onResult: (output: any, batchId: string) => void
-    onBatchComplete: (batchId: string) => void
+    onBatchComplete: (batchId: string, lostPluginIds: string[]) => void
   }) => {
     state.probeHandlers = {
       onResult: (output, batchId = "test-batch") => handlers.onResult(output, batchId),
-      onBatchComplete: (batchId = "test-batch") => handlers.onBatchComplete(batchId),
+      onBatchComplete: (batchId = "test-batch", lostPluginIds: string[] = []) =>
+        handlers.onBatchComplete(batchId, lostPluginIds),
     }
     return { startBatch: state.startBatchMock }
   },

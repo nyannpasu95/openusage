@@ -28,12 +28,19 @@ export function useProbe({
     manualRefreshIdsRef,
     setLoadingForPlugins,
     setErrorForPlugins,
+    markResultsLost,
     handleProbeResult,
   } = useProbeState({ onProbeResult })
 
-  const handleBatchComplete = useCallback((batchId: string) => {
-    onProbeBatchComplete?.(batchId)
-  }, [onProbeBatchComplete])
+  const handleBatchComplete = useCallback(
+    (batchId: string, lostPluginIds: string[]) => {
+      // Recover plugins whose probe:result never reached the webview so they
+      // become eligible for the next refresh instead of loading forever.
+      markResultsLost(lostPluginIds)
+      onProbeBatchComplete?.(batchId)
+    },
+    [markResultsLost, onProbeBatchComplete]
+  )
 
   const { startBatch } = useProbeEvents({
     onResult: handleProbeResult,
