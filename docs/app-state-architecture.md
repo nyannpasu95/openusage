@@ -24,6 +24,8 @@
 7. Derived hooks recompute view models from source state.
 8. `App.tsx` passes derived values directly to `AppShell` and `AppContent`.
 9. `AppShell` and `AppContent` render from those direct props and source stores.
+10. `usePanel` resets the shared content scroller whenever `activeView` changes, so a long provider or Settings page cannot leak its scroll position into the next view.
+11. `usePanel` keeps the native panel at a stable 400×500 logical size. On displays where 500 px would exceed 80% of the available height, it caps the panel to that limit. Longer views scroll inside `AppShell` instead of resizing the window.
 
 ## Guardrails
 - Keep source-of-truth state in dedicated stores (`app-ui-store`, `app-plugin-store`, `app-preferences-store`).

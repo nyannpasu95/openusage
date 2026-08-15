@@ -1570,14 +1570,14 @@ describe("App", () => {
         expect.objectContaining({ disabled: expect.arrayContaining(["a"]) })
       )
     )
-    await screen.findByText("No providers enabled")
+    await screen.findByText("No Providers Enabled")
     expect(screen.queryByText("Provider not found")).not.toBeInTheDocument()
   })
 
   it("shows empty state when all plugins disabled", async () => {
     state.loadPluginSettingsMock.mockResolvedValueOnce({ order: ["a", "b"], disabled: ["a", "b"] })
     render(<App />)
-    await screen.findByText("No providers enabled")
+    await screen.findByText("No Providers Enabled")
     expect(screen.getByText("Paused")).toBeInTheDocument()
   })
 
@@ -1640,28 +1640,13 @@ describe("App", () => {
     await waitFor(() => expect(state.setSizeMock).toHaveBeenCalled())
   })
 
-  it("resizes again via ResizeObserver callback", async () => {
+  it("keeps the native panel at a stable height", async () => {
     state.isTauriMock.mockReturnValue(true)
-    const OriginalResizeObserver = globalThis.ResizeObserver
-    const observeSpy = vi.fn()
-    globalThis.ResizeObserver = class ResizeObserverImmediate {
-      private cb: ResizeObserverCallback
-      constructor(cb: ResizeObserverCallback) {
-        this.cb = cb
-      }
-      observe() {
-        observeSpy()
-        this.cb([], this as unknown as ResizeObserver)
-      }
-      unobserve() {}
-      disconnect() {}
-    } as unknown as typeof ResizeObserver
-
     render(<App />)
-    await waitFor(() => expect(observeSpy).toHaveBeenCalled())
     await waitFor(() => expect(state.setSizeMock).toHaveBeenCalled())
-
-    globalThis.ResizeObserver = OriginalResizeObserver
+    expect(
+      state.setSizeMock.mock.calls.every(([size]) => size.height === 500)
+    ).toBe(true)
   })
 
   it("logs resize failures", async () => {

@@ -17,9 +17,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         ? Math.min(100, Math.max(0, markerValue))
         : null
     const showMarker = clampedMarker !== null && clamped > 0 && clamped < 100
-    const indicatorStyle = indicatorColor
-      ? { backgroundColor: indicatorColor }
-      : undefined
+    const indicatorStyle = indicatorColor ? { color: indicatorColor } : undefined
     const markerTransform =
       clampedMarker === null
         ? undefined
@@ -42,18 +40,19 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         aria-valuenow={clamped}
         aria-valuemin={0}
         aria-valuemax={100}
-        className={cn("relative h-2.5 w-full overflow-hidden rounded-full bg-muted/70 dark:bg-white/[0.06]", className)}
+        className={cn("usage-track relative h-2.5 w-full overflow-hidden", className)}
         {...props}
       >
         <div
-          className="h-full rounded-full transition-all bg-primary"
+          data-slot="progress-indicator"
+          className="usage-track-indicator h-full transition-[width] duration-300"
           style={{ width: `${clamped}%`, ...indicatorStyle }}
         />
         {showMarker && (
           <div
             data-slot="progress-marker"
             aria-hidden="true"
-            className="absolute top-0 bottom-0 w-1 z-10 pointer-events-none rounded-sm bg-muted-foreground ring-1 ring-background/50"
+            className="absolute bottom-0 top-0 z-10 w-px bg-foreground ring-1 ring-background/70 pointer-events-none"
             style={markerStyle}
           />
         )}
@@ -61,9 +60,9 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
           <div
             data-slot="progress-refreshing"
             aria-hidden="true"
-            className="absolute inset-0 overflow-hidden rounded-full"
+            className="usage-refresh-pattern absolute inset-0 overflow-hidden"
           >
-            <div className="h-full w-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+            <div className="usage-refresh-sweep h-full w-1/3" />
           </div>
         )}
       </div>

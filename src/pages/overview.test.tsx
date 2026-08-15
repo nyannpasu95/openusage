@@ -5,7 +5,7 @@ import { OverviewPage } from "@/pages/overview"
 describe("OverviewPage", () => {
   it("renders empty state", () => {
     render(<OverviewPage plugins={[]} displayMode="used" resetTimerDisplayMode="relative" />)
-    expect(screen.getByText("No providers enabled")).toBeInTheDocument()
+    expect(screen.getByText("No Providers Enabled")).toBeInTheDocument()
   })
 
   it("renders provider cards", () => {
@@ -21,6 +21,41 @@ describe("OverviewPage", () => {
     ]
     render(<OverviewPage plugins={plugins} displayMode="used" resetTimerDisplayMode="relative" />)
     expect(screen.getByText("Alpha")).toBeInTheDocument()
+  })
+
+  it("summarizes highest usage without relying on color", () => {
+    render(
+      <OverviewPage
+        displayMode="used"
+        resetTimerDisplayMode="relative"
+        plugins={[
+          {
+            meta: {
+              id: "alpha",
+              name: "Alpha",
+              iconUrl: "icon",
+              lines: [{ type: "progress", label: "Usage", scope: "overview" }],
+            },
+            data: {
+              providerId: "alpha",
+              displayName: "Alpha",
+              iconUrl: "icon",
+              lines: [
+                { type: "progress", label: "Usage", used: 80, limit: 100, format: { kind: "percent" } },
+              ],
+            },
+            loading: false,
+            error: null,
+            lastManualRefreshAt: null,
+            lastUpdatedAt: null,
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText("Highest Usage")).toBeInTheDocument()
+    expect(screen.getByText("80% · Alpha")).toBeInTheDocument()
+    expect(screen.getByText("On Track")).toBeInTheDocument()
   })
 
   it("only shows overview-scoped lines", () => {

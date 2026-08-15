@@ -6,6 +6,7 @@ import type { ActiveView } from "@/components/side-nav"
 import type { DisplayPluginState } from "@/hooks/app/use-app-plugin-views"
 
 const PANEL_WIDTH = 400
+const PANEL_HEIGHT = 500
 const MAX_HEIGHT_FALLBACK_PX = 600
 const MAX_HEIGHT_FRACTION_OF_MONITOR = 0.8
 
@@ -38,8 +39,8 @@ export function usePanel({
   const containerRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollDown, setCanScrollDown] = useState(false)
-  const [maxPanelHeightPx, setMaxPanelHeightPx] = useState<number | null>(null)
-  const maxPanelHeightPxRef = useRef<number | null>(null)
+  const [panelHeightPx, setPanelHeightPx] = useState(PANEL_HEIGHT)
+  const panelHeightPxRef = useRef(PANEL_HEIGHT)
   const focusContainer = useCallback(() => {
     window.requestAnimationFrame(() => {
       containerRef.current?.focus({ preventScroll: true })
@@ -149,16 +150,21 @@ export function usePanel({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [activeView, displayPlugins, setActiveView, showAbout])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: View and plugin changes alter the observed DOM size and must retrigger measurement.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Active view changes must reset the shared scroll container.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    el.scrollTop = 0
+  }, [activeView])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: View and plugin changes can reposition the panel and must recheck the monitor cap.
   useEffect(() => {
     if (!isTauri()) return
-    const container = containerRef.current
-    if (!container) return
 
     const resizeWindow = async () => {
       const factor = window.devicePixelRatio
       const width = Math.ceil(PANEL_WIDTH * factor)
-      const desiredHeightLogical = Math.max(1, container.scrollHeight)
 
       let maxHeightPhysical: number | null = null
       let maxHeightLogical: number | null = null
@@ -179,13 +185,13 @@ export function usePanel({
         maxHeightPhysical = Math.floor(maxHeightLogical * factor)
       }
 
-      if (maxPanelHeightPxRef.current !== maxHeightLogical) {
-        maxPanelHeightPxRef.current = maxHeightLogical
-        setMaxPanelHeightPx(maxHeightLogical)
+      const stableHeightLogical = Math.min(PANEL_HEIGHT, maxHeightLogical)
+      if (panelHeightPxRef.current !== stableHeightLogical) {
+        panelHeightPxRef.current = stableHeightLogical
+        setPanelHeightPx(stableHeightLogical)
       }
 
-      const desiredHeightPhysical = Math.ceil(desiredHeightLogical * factor)
-      const height = Math.ceil(Math.min(desiredHeightPhysical, maxHeightPhysical!))
+      const height = Math.ceil(Math.min(stableHeightLogical * factor, maxHeightPhysical!))
 
       try {
         const currentWindow = getCurrentWindow()
@@ -196,13 +202,6 @@ export function usePanel({
     }
 
     resizeWindow()
-
-    const observer = new ResizeObserver(() => {
-      resizeWindow()
-    })
-    observer.observe(container)
-
-    return () => observer.disconnect()
   }, [activeView, displayPlugins])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: View changes replace scroll content and must refresh the observer state.
@@ -234,6 +233,6 @@ export function usePanel({
     containerRef,
     scrollRef,
     canScrollDown,
-    maxPanelHeightPx,
+    panelHeightPx,
   }
 }

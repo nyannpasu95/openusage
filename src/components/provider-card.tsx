@@ -11,6 +11,7 @@ import { useNowTicker } from "@/hooks/use-now-ticker"
 import { REFRESH_COOLDOWN_MS, type DisplayMode, type ResetTimerDisplayMode, type TimeFormatMode } from "@/lib/settings"
 import type { ManifestLine, MetricLine, PluginLink } from "@/lib/plugin-types"
 import { groupLinesByType } from "@/lib/group-lines-by-type"
+import { cn } from "@/lib/utils"
 
 interface ProviderCardProps {
   name: string
@@ -85,6 +86,21 @@ export function ProviderCard({
   // or the parent is passing lines directly (tests + legacy state paths).
   const hasStaleData = lastUpdatedAt != null || filteredLines.length > 0
   const isRefreshingWithData = loading && hasStaleData
+  const highestUsageRatio = filteredLines.reduce((highest, line) => {
+    if (line.type !== "progress" || !Number.isFinite(line.limit) || line.limit <= 0) {
+      return highest
+    }
+    return Math.max(highest, line.used / line.limit)
+  }, 0)
+  const stateLabel = isRefreshingWithData
+    ? "Refreshing"
+    : error && hasStaleData
+      ? "Data Stale"
+      : highestUsageRatio >= 0.9
+        ? "Near Limit"
+        : highestUsageRatio > 0
+          ? "On Track"
+          : null
 
   const tickerIntervalMs = cooldownRemainingMs > 0 ? 1000 : 30_000
 
@@ -130,10 +146,17 @@ export function ProviderCard({
 
   return (
     <div>
-      <div className="rounded-lg border border-border/60 dark:border-white/[0.06] bg-card/50 dark:bg-white/[0.02] px-3 py-2.5">
-        <div className="flex items-center justify-between mb-2">
+      <div className="rounded-md border border-border-strong/60 bg-card px-3.5 py-3.5">
+        <div className="mb-3 flex items-start justify-between gap-2.5">
           <div className="relative flex items-center min-w-0">
-            <h2 className="text-base font-semibold tracking-tight truncate" style={{ transform: "translateZ(0)" }}>{name}</h2>
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-bold uppercase leading-none tracking-[-0.02em]" style={{ transform: "translateZ(0)" }}>{name}</h2>
+              {plan ? (
+                <p className="mt-1 truncate font-mono text-[9px] leading-none text-muted-foreground" title={plan}>
+                  {plan}
+                </p>
+              ) : null}
+            </div>
             {onRetry && (
               loading ? (
                 <Button
@@ -197,18 +220,21 @@ export function ProviderCard({
               )
             )}
           </div>
-          {plan && (
+          {stateLabel ? (
             <Badge
               variant="outline"
-              className="truncate min-w-0 max-w-[50%]"
-              title={plan}
+              className={cn(
+                "h-5 shrink-0 rounded-full px-2 font-mono text-[8px] font-semibold uppercase tracking-[0.08em]",
+                stateLabel === "Data Stale" && "border-dashed",
+                stateLabel === "Refreshing" && "usage-refresh-pattern"
+              )}
             >
-              {plan}
+              {stateLabel}
             </Badge>
-          )}
+          ) : null}
         </div>
         {visibleLinks.length > 0 && (
-          <div className="mb-2 -mt-0.5 flex flex-wrap gap-1.5">
+          <div className="mb-2 flex flex-wrap gap-1.5 border-t pt-2">
             {visibleLinks.map((link) => (
               <Button
                 key={`${link.label}-${link.url}`}
@@ -233,7 +259,7 @@ export function ProviderCard({
               render={(props) => (
                 <div
                   {...props}
-                  className="flex items-center gap-1.5 mb-2 text-xs text-destructive"
+                  className="mb-2 flex items-center gap-1.5 border border-dashed px-2 py-1.5 text-xs text-foreground"
                 >
                   <AlertCircle className="h-3 w-3 flex-shrink-0" />
                   <span className="truncate">{error}</span>
@@ -251,7 +277,7 @@ export function ProviderCard({
         )}
 
         {hasStaleData && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {groupLinesByType(filteredLines).map((group, gi) =>
               group.kind === "text" ? (
                 <div key={gi} className="space-y-1">

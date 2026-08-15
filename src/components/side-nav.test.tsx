@@ -4,14 +4,6 @@ import { describe, expect, it, vi } from "vitest"
 
 import { SideNav } from "@/components/side-nav"
 
-const darkModeState = vi.hoisted(() => ({
-  useDarkModeMock: vi.fn(() => false),
-}))
-
-vi.mock("@/hooks/use-dark-mode", () => ({
-  useDarkMode: darkModeState.useDarkModeMock,
-}))
-
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(() => Promise.resolve()),
 }))
@@ -28,7 +20,7 @@ describe("SideNav", () => {
     expect(onViewChange).toHaveBeenCalledWith("home")
   })
 
-  it("renders plugin icon button and uses brand color when appropriate", () => {
+  it("renders plugin icons in the monochrome navigation color", () => {
     const onViewChange = vi.fn()
     render(
       <SideNav
@@ -44,35 +36,27 @@ describe("SideNav", () => {
     expect(btn).toBeInTheDocument()
 
     const icon = screen.getByRole("img", { name: "Plugin 1" })
-    expect(icon).toHaveStyle({ backgroundColor: "#ff0000" })
+    expect(icon.getAttribute("style") ?? "").toMatch(/background-color:\s*currentcolor/i)
   })
 
-  it("falls back to currentColor (light) or white (dark) for low-contrast brand colors", () => {
+  it("does not reintroduce provider brand colors", () => {
     const onViewChange = vi.fn()
-
-    // Light mode + very light color => currentColor
-    darkModeState.useDarkModeMock.mockReturnValueOnce(false)
-    const { rerender } = render(
+    render(
       <SideNav
         activeView="home"
         onViewChange={onViewChange}
-        plugins={[{ id: "p", name: "P", iconUrl: "icon.svg", brandColor: "#ffffff" }]}
+        plugins={[
+          { id: "p1", name: "P1", iconUrl: "icon.svg", brandColor: "#00ff00" },
+          { id: "p2", name: "P2", iconUrl: "icon.svg", brandColor: "#ff0000" },
+        ]}
       />
     )
-    const pStyle = screen.getByRole("img", { name: "P" }).getAttribute("style") ?? ""
-    expect(pStyle).toMatch(/background-color:\s*currentcolor/i)
 
-    // Dark mode + very dark color => white
-    darkModeState.useDarkModeMock.mockReturnValueOnce(true)
-    rerender(
-      <SideNav
-        activeView="home"
-        onViewChange={onViewChange}
-        plugins={[{ id: "p2", name: "P2", iconUrl: "icon.svg", brandColor: "#000000" }]}
-      />
-    )
-    const p2Style = screen.getByRole("img", { name: "P2" }).getAttribute("style") ?? ""
-    expect(p2Style).toContain("rgb(255, 255, 255)")
+    for (const name of ["P1", "P2"]) {
+      const style = screen.getByRole("img", { name }).getAttribute("style") ?? ""
+      expect(style).toMatch(/background-color:\s*currentcolor/i)
+      expect(style).not.toMatch(/00ff00|ff0000/i)
+    }
   })
 
   it("does not render the removed Help shortcut", () => {

@@ -48,8 +48,9 @@ describe("ui components", () => {
   })
 
   it("renders progress with clamp + custom color", () => {
-    const { rerender } = render(<Progress value={150} indicatorColor="#fff" />)
+    const { container, rerender } = render(<Progress value={150} indicatorColor="#fff" />)
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100")
+    expect(container.querySelector<HTMLElement>('[data-slot="progress-indicator"]')?.style.color).toBe("rgb(255, 255, 255)")
     rerender(<Progress value={-5} />)
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0")
   })
@@ -62,7 +63,7 @@ describe("ui components", () => {
     expect(marker).toBeTruthy()
     expect(marker?.style.left).toBe("100%")
     expect(marker?.style.transform).toBe("translateX(-100%)")
-    expect(marker).toHaveClass("bg-muted-foreground", "w-1", "ring-background/50")
+    expect(marker).toHaveClass("bg-foreground", "w-px", "ring-background/70")
 
     rerender(<Progress value={25} markerValue={-10} />)
     marker = container.querySelector<HTMLElement>('[data-slot="progress-marker"]')

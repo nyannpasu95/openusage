@@ -8,15 +8,8 @@ import { clamp01, formatCountNumber, formatFixedPrecisionNumber } from "@/lib/ut
 import { calculateDeficit, calculatePaceStatus, type PaceStatus } from "@/lib/pace-status"
 import { buildPaceDetailText, formatDeficitText, formatRunsOutText, getPaceStatusText } from "@/lib/pace-tooltip"
 import { formatResetAbsoluteLabel, formatResetRelativeLabel, formatResetTooltipText } from "@/lib/reset-tooltip"
-import { getHealthColor } from "@/lib/health-color"
+import { cn } from "@/lib/utils"
 
-const PACE_VISUALS: Record<PaceStatus, { dotClass: string }> = {
-  ahead: { dotClass: "bg-green-500" },
-  "on-track": { dotClass: "bg-yellow-500" },
-  behind: { dotClass: "bg-red-500" },
-}
-
-/** Colored dot indicator showing pace status */
 function PaceIndicator({
   status,
   detailText,
@@ -26,9 +19,8 @@ function PaceIndicator({
   detailText?: string | null
   isLimitReached?: boolean
 }) {
-  const colorClass = PACE_VISUALS[status].dotClass
-
   const statusText = getPaceStatusText(status)
+  const visibleText = isLimitReached ? "Limit" : statusText
 
   return (
     <Tooltip>
@@ -36,9 +28,15 @@ function PaceIndicator({
         render={(props) => (
           <span
             {...props}
-            className={`inline-block w-2 h-2 rounded-full ${colorClass}`}
+            className={cn(
+              "inline-flex h-4 items-center rounded-full border px-1.5 font-mono text-[7px] font-semibold uppercase leading-none tracking-[0.08em]",
+              status === "on-track" && !isLimitReached && "bg-foreground text-background",
+              (status === "behind" || isLimitReached) && "border-dashed"
+            )}
             aria-label={isLimitReached ? "Limit reached" : statusText}
-          />
+          >
+            {visibleText}
+          </span>
         )}
       />
       <TooltipContent side="top" className="text-xs text-center">
@@ -81,7 +79,6 @@ export function MetricLineRenderer({
           </span>
           <span
             className="text-xs text-muted-foreground truncate flex-shrink-0 max-w-[45%] text-right"
-            style={line.color ? { color: line.color } : undefined}
             title={line.value}
           >
             {line.value}
@@ -102,11 +99,6 @@ export function MetricLineRenderer({
           <Badge
             variant="outline"
             className="truncate min-w-0 max-w-[60%]"
-            style={
-              line.color
-                ? { color: line.color, borderColor: line.color }
-                : undefined
-            }
             title={line.text}
           >
             {line.text}
@@ -121,7 +113,7 @@ export function MetricLineRenderer({
 
   if (line.type === "barChart") {
     return (
-      <UsageSparkline label={line.label} points={line.points} note={line.note} color={line.color} />
+      <UsageSparkline label={line.label} points={line.points} note={line.note} />
     )
   }
 
@@ -138,10 +130,6 @@ export function MetricLineRenderer({
         ? line.used
         : Math.max(0, line.limit - line.used)
     const percent = Math.round(clamp01(shownAmount / line.limit) * 10000) / 100
-    // Health color always tracks consumption, never the displayed value: in
-    // "left" mode the bar shows remaining capacity, so `percent` would invert
-    // the ramp (100% left = healthy, but reads as 100% → red).
-    const usedPercent = clamp01(line.used / line.limit) * 100
     const leftSuffix = displayMode === "left" ? " left" : ""
 
     const primaryText =
@@ -254,7 +242,6 @@ export function MetricLineRenderer({
         </div>
         <Progress
           value={percent}
-          indicatorColor={getHealthColor(usedPercent) ?? line.color}
           markerValue={paceMarkerValue}
           refreshing={refreshing}
         />

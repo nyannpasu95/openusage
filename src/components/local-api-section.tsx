@@ -39,11 +39,11 @@ export function LocalApiSection() {
       </p>
       <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
         {error ? (
-          <p className="text-red-500">Unable To Read API Status</p>
+          <p className="font-medium text-foreground">Unable To Read API Status</p>
         ) : status === null ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <LoaderCircle className="size-4 animate-spin" />
-            Checking status...
+            Checking Status...
           </div>
         ) : (
           <>
@@ -52,10 +52,10 @@ export function LocalApiSection() {
               <span
                 className={
                   status.state === "listening"
-                    ? "text-green-600"
+                    ? "font-medium text-foreground"
                     : status.state === "starting"
                       ? "text-muted-foreground"
-                      : "text-red-500"
+                      : "font-medium text-foreground underline decoration-dashed underline-offset-4"
                 }
               >
                 {STATUS_LABELS[status.state]}
@@ -74,17 +74,17 @@ export function LocalApiSection() {
               </div>
             )}
             {status.state === "portInUse" && (
-              <p className="text-xs text-red-500 pt-1">
+              <p className="border-l border-dashed pl-2 pt-1 text-xs text-muted-foreground">
                 Another process is using port {status.port}. The API will retry on next launch.
               </p>
             )}
             {status.state === "tokenFileError" && (
-              <p className="text-xs text-red-500 pt-1">
+              <p className="border-l border-dashed pl-2 pt-1 text-xs text-muted-foreground">
                 The API token could not be stored securely. Check the app logs for details.
               </p>
             )}
             {status.state === "bindError" && (
-              <p className="text-xs text-red-500 pt-1">
+              <p className="border-l border-dashed pl-2 pt-1 text-xs text-muted-foreground">
                 The API could not start. Check the app logs for details.
               </p>
             )}

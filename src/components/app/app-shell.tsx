@@ -8,8 +8,6 @@ import { usePanel } from "@/hooks/app/use-panel"
 import { useAppUpdate } from "@/hooks/use-app-update"
 import { useAppUiStore } from "@/stores/app-ui-store"
 
-const ARROW_OVERHEAD_PX = 37
-
 type AppShellProps = {
   onRefreshAll: () => void
   navPlugins: NavPlugin[]
@@ -59,7 +57,7 @@ export function AppShell({
     containerRef,
     scrollRef,
     canScrollDown,
-    maxPanelHeightPx,
+    panelHeightPx,
   } = usePanel({
     activeView,
     setActiveView,
@@ -74,12 +72,12 @@ export function AppShell({
     <div
       ref={containerRef}
       tabIndex={-1}
-      className="flex flex-col items-center p-6 pt-1.5 bg-transparent outline-none"
+      className="flex flex-col items-center bg-transparent px-3 pb-3 pt-1.5 outline-none"
+      style={{ height: `${panelHeightPx}px` }}
     >
       <div className="tray-arrow" />
       <div
-        className="relative bg-card rounded-xl overflow-hidden select-none w-full border shadow-lg flex flex-col"
-        style={maxPanelHeightPx ? { maxHeight: `${maxPanelHeightPx - ARROW_OVERHEAD_PX}px` } : undefined}
+        className="relative flex min-h-0 w-full flex-1 select-none flex-col overflow-hidden rounded-lg border bg-card shadow-lg"
       >
         <div className="flex flex-1 min-h-0 flex-row">
           <SideNav
@@ -90,7 +88,7 @@ export function AppShell({
             isPluginRefreshAvailable={isPluginRefreshAvailable}
             onReorder={onNavReorder}
           />
-          <div className="flex-1 flex flex-col px-3 pt-2 pb-1.5 min-w-0 bg-card dark:bg-muted/50">
+          <div className="flex min-w-0 flex-1 flex-col bg-card px-3.5 pb-2 pt-3">
             <div className="relative flex-1 min-h-0">
               <div ref={scrollRef} className="h-full overflow-y-auto scrollbar-none">
                 <AppContent
@@ -101,7 +99,7 @@ export function AppShell({
                 />
               </div>
               <div
-                className={`pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-card dark:from-muted/50 to-transparent transition-opacity duration-200 ${canScrollDown ? "opacity-100" : "opacity-0"}`}
+                className={`pointer-events-none absolute inset-x-0 bottom-0 h-px bg-border-strong transition-opacity duration-200 ${canScrollDown ? "opacity-100" : "opacity-0"}`}
               />
             </div>
             <PanelFooter

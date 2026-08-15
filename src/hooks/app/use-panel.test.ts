@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { DisplayPluginState } from "@/hooks/app/use-app-plugin-views"
 
 const {
   currentMonitorMock,
@@ -56,6 +57,7 @@ describe("usePanel", () => {
   })
 
   it("handles tray show-about event", async () => {
+    const setActiveView = vi.fn()
     const setShowAbout = vi.fn()
     const callbacks = new Map<string, (event: { payload: unknown }) => void>()
 
@@ -67,7 +69,7 @@ describe("usePanel", () => {
     renderHook(() =>
       usePanel({
         activeView: "home",
-        setActiveView: vi.fn(),
+        setActiveView,
         showAbout: false,
         setShowAbout,
         displayPlugins: [],
@@ -117,6 +119,8 @@ describe("usePanel", () => {
   })
 
   it("cleans second listener if hook unmounts between listener registrations", async () => {
+    const setActiveView = vi.fn()
+    const setShowAbout = vi.fn()
     const unlistenNavigate = vi.fn()
     const unlistenShowAbout = vi.fn()
     let resolveShowAbout: ((value: () => void) => void) | null = null
@@ -133,9 +137,9 @@ describe("usePanel", () => {
     const { unmount } = renderHook(() =>
       usePanel({
         activeView: "home",
-        setActiveView: vi.fn(),
+        setActiveView,
         showAbout: false,
-        setShowAbout: vi.fn(),
+        setShowAbout,
         displayPlugins: [],
       })
     )
@@ -340,5 +344,88 @@ describe("usePanel", () => {
 
     document.body.removeChild(container)
     requestAnimationFrameSpy.mockRestore()
+  })
+
+  it("resets content scroll when the active view changes", () => {
+    const props = {
+      activeView: "home",
+      setActiveView: vi.fn(),
+      showAbout: false,
+      setShowAbout: vi.fn(),
+      displayPlugins: [],
+    }
+    const { result, rerender } = renderHook(
+      ({ activeView }) => usePanel({ ...props, activeView }),
+      { initialProps: { activeView: "home" } }
+    )
+    const scrollContainer = document.createElement("div")
+
+    act(() => {
+      result.current.scrollRef.current = scrollContainer
+      scrollContainer.scrollTop = 180
+    })
+
+    rerender({ activeView: "settings" })
+
+    expect(scrollContainer.scrollTop).toBe(0)
+  })
+
+  it("keeps a stable 500px panel height regardless of content", async () => {
+    const setSize = vi.fn().mockResolvedValue(undefined)
+    getCurrentWindowMock.mockReturnValue({ setSize })
+    currentMonitorMock.mockResolvedValue({ size: { height: 1200 } })
+
+    const { result, rerender } = renderHook(
+      ({ displayPlugins }) =>
+        usePanel({
+          activeView: "home",
+          setActiveView: vi.fn(),
+          showAbout: false,
+          setShowAbout: vi.fn(),
+          displayPlugins,
+        }),
+      { initialProps: { displayPlugins: [] as DisplayPluginState[] } }
+    )
+
+    await waitFor(() => {
+      expect(setSize).toHaveBeenCalledWith(expect.objectContaining({ width: 400, height: 500 }))
+    })
+    expect(result.current.panelHeightPx).toBe(500)
+
+    rerender({
+      displayPlugins: [
+        {
+          meta: { id: "a" },
+          data: null,
+          loading: false,
+          error: null,
+          lastManualRefreshAt: null,
+        } as DisplayPluginState,
+      ],
+    })
+
+    await waitFor(() => expect(setSize).toHaveBeenCalledTimes(2))
+    expect(setSize.mock.calls.every(([size]) => size.height === 500)).toBe(true)
+  })
+
+  it("caps the stable panel height on small monitors", async () => {
+    const setSize = vi.fn().mockResolvedValue(undefined)
+    getCurrentWindowMock.mockReturnValue({ setSize })
+    currentMonitorMock.mockResolvedValue({ size: { height: 500 } })
+
+    const { result } = renderHook(() =>
+      usePanel({
+        activeView: "home",
+        setActiveView: vi.fn(),
+        showAbout: false,
+        setShowAbout: vi.fn(),
+        displayPlugins: [],
+      })
+    )
+
+    await waitFor(() => {
+      expect(setSize).toHaveBeenCalledWith(expect.objectContaining({ width: 400, height: 400 }))
+    })
+    expect(result.current.panelHeightPx).toBe(400)
   })
 })
