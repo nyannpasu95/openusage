@@ -1,7 +1,7 @@
 ---
 name: release-tauri
 description: >-
-  Cut a release of the Tauri edition of OpenUsage (main branch): version bump,
+  Cut a release of the Tauri edition of OhMyUsage (tikuwa branch): version bump,
   generate a GitHub Release-style changelog, update CHANGELOG.md, and publish a
   GitHub Release. Use when the user asks to tag a Tauri release, bump the
   version, create a changelog, cut a release, or publish release notes. Pairs

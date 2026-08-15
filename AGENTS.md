@@ -21,7 +21,7 @@ Version: 0.40 (2026-07-10)
 ## Releases
 
 - Releases are cut from a `tikuwa` commit by pushing a `vX.Y.Z` tag, which triggers `.github/workflows/publish.yml`.
-- Update endpoints point at this fork's GitHub releases: `https://github.com/nyannpasu95/openusage/releases/latest/download/latest.json`.
+- Update endpoints point at this fork's GitHub releases: `https://github.com/nyannpasu95/ohmyusage/releases/latest/download/latest.json`.
 - Builds are **ad-hoc signed** (no Apple Developer certificate on this fork). The first-launch README note tells users to clear the quarantine attribute.
 - Keep the version consistent across `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`. The publish workflow validates all three against the tag.
 - Use the **release-tauri** skill to cut a release (it handles the version bump, changelog, and asset verification). Never leave a release in Draft.

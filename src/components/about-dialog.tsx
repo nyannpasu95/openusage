@@ -115,7 +115,7 @@ export function AboutDialog({ version, onClose }: AboutDialogProps) {
           </p>
           <p>
             Open source on{" "}
-            <ExternalLink href="https://github.com/nyannpasu95/openusage">
+            <ExternalLink href="https://github.com/nyannpasu95/ohmyusage">
               GitHub
             </ExternalLink>
           </p>

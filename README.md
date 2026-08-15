@@ -6,7 +6,7 @@ See your usage at a glance from your menu bar. No digging through dashboards.
 
 ## Download
 
-[**Download the latest release**](https://github.com/nyannpasu95/openusage/releases/latest) (macOS, Apple Silicon & Intel)
+[**Download the latest release**](https://github.com/nyannpasu95/ohmyusage/releases/latest) (macOS, Apple Silicon & Intel)
 
 The app auto-updates. Install once and you're set.
 
@@ -49,7 +49,7 @@ OhMyUsage lives in your menu bar and shows you how much of your AI coding subscr
 
 Community contributions welcome.
 
-Want a provider that's not listed? [Open an issue.](https://github.com/nyannpasu95/openusage/issues/new)
+Want a provider that's not listed? [Open an issue.](https://github.com/nyannpasu95/ohmyusage/issues/new)
 
 ## Open Source, Community Driven
 
@@ -61,9 +61,9 @@ Plugins are currently bundled as we build out the API, but soon will be made fle
 
 <a href="https://www.star-history.com/?repos=nyannpasu95%2Fopenusage&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nyannpasu95/openusage&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=nyannpasu95/openusage&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=nyannpasu95/openusage&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nyannpasu95/ohmyusage&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=nyannpasu95/ohmyusage&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=nyannpasu95/ohmyusage&type=date&legend=top-left" />
  </picture>
 </a>
 
@@ -71,7 +71,7 @@ Plugins are currently bundled as we build out the API, but soon will be made fle
 
 - **Add a provider.** Each one is just a plugin. See the [Plugin API](docs/plugins/api.md).
 - **Fix a bug.** PRs welcome. Provide before/after screenshots.
-- **Request a feature.** [Open an issue](https://github.com/nyannpasu95/openusage/issues/new) and make your case.
+- **Request a feature.** [Open an issue](https://github.com/nyannpasu95/ohmyusage/issues/new) and make your case.
 
 Keep it simple. No feature creep, no AI-generated commit messages, test your changes.
 

@@ -63,7 +63,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM4QzZDNDk0MzQ4NkQzRTMKUldUajA0WTBsTVRHT0d0K1czc0dvQy9QN3NvcWdqSDI3d2pIdVN2WHNhNG52dExsaG1mVlhuMksK",
       "endpoints": [
-        "https://github.com/nyannpasu95/openusage/releases/latest/download/latest.json"
+        "https://github.com/nyannpasu95/ohmyusage/releases/latest/download/latest.json"
       ]
     }
   }
