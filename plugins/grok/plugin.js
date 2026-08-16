@@ -246,6 +246,19 @@
     }
   }
 
+  function checkCredentials(ctx) {
+    const auth = readJson(ctx, AUTH_PATH)
+    if (!auth || typeof auth !== "object") return { configured: false }
+    const keys = Object.keys(auth)
+    for (let i = 0; i < keys.length; i++) {
+      const entry = auth[keys[i]]
+      if (!entry || typeof entry !== "object") continue
+      const token = typeof entry.key === "string" ? entry.key.trim() : ""
+      if (token) return { configured: true, source: "Grok CLI" }
+    }
+    return { configured: false }
+  }
+
   function probe(ctx) {
     const auth = loadAuth(ctx)
     const billingResp = ctx.util.retryOnceOnAuth({
@@ -293,5 +306,5 @@
     return { plan: fetchPlanName(ctx, auth.token), lines }
   }
 
-  globalThis.__openusage_plugin = { id: "grok", probe }
+  globalThis.__openusage_plugin = { id: "grok", probe, checkCredentials }
 })()

@@ -126,12 +126,44 @@ describe("qwen plugin", () => {
     const plugin = await loadPlugin()
     expect(plugin.id).toBe("qwen")
     expect(typeof plugin.probe).toBe("function")
+    expect(typeof plugin.checkCredentials).toBe("function")
   })
 
   it("throws when the cookie is missing", async () => {
     const ctx = ctxWithRoutes({}, null)
     const plugin = await loadPlugin()
     expect(() => plugin.probe(ctx)).toThrow("Qianwen console cookie missing")
+  })
+
+  it("prefers the credential stored in keychain over env and file", async () => {
+    const ctx = ctxIndividual()
+    ctx.host.fs.writeText("~/.openusage/qwen-cookie.txt", "file-cookie=xyz")
+    ctx.host.keychain.readGenericPassword.mockReturnValue("stored-cookie=1")
+    const plugin = await loadPlugin()
+    plugin.probe(ctx)
+
+    expect(ctx.host.keychain.readGenericPassword).toHaveBeenCalledWith("OpenUsage-qwen-credential")
+    const call = ctx.host.http.request.mock.calls[0][0]
+    expect(call.headers.Cookie).toBe("stored-cookie=1")
+  })
+
+  it("checkCredentials reports source Settings, Env, File, or not configured", async () => {
+    const plugin = await loadPlugin()
+
+    const keychainCtx = ctxIndividual()
+    keychainCtx.host.keychain.readGenericPassword.mockReturnValue("stored-cookie=1")
+    expect(plugin.checkCredentials(keychainCtx)).toEqual({ configured: true, source: "Settings" })
+
+    const envCtx = ctxIndividual()
+    expect(plugin.checkCredentials(envCtx)).toEqual({ configured: true, source: "Env" })
+
+    const fileCtx = ctxIndividual()
+    fileCtx.host.env.get.mockImplementation(() => null)
+    fileCtx.host.fs.writeText("~/.openusage/qwen-cookie.txt", "file-cookie=xyz")
+    expect(plugin.checkCredentials(fileCtx)).toEqual({ configured: true, source: "File" })
+
+    const emptyCtx = ctxWithRoutes({}, null)
+    expect(plugin.checkCredentials(emptyCtx)).toEqual({ configured: false })
   })
 
   it("reads the cookie from the cookie file when env is missing", async () => {

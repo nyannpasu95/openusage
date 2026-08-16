@@ -1013,5 +1013,12 @@
     cachedUsageData = null
   }
 
-  globalThis.__openusage_plugin = { id: "claude", probe, _resetState }
+  function checkCredentials(ctx) {
+    const creds = loadCredentials(ctx)
+    if (!creds) return { configured: false }
+    if (creds.inferenceOnly) return { configured: true, source: "Env" }
+    return { configured: true, source: "Claude Code" }
+  }
+
+  globalThis.__openusage_plugin = { id: "claude", probe, _resetState, checkCredentials }
 })()

@@ -666,5 +666,13 @@
     return { plan: plan, lines: lines }
   }
 
-  globalThis.__openusage_plugin = { id: "cursor", probe }
+  function checkCredentials(ctx) {
+    const authState = loadAuthState(ctx)
+    if (authState.accessToken || authState.refreshToken) {
+      return { configured: true, source: "Cursor App" }
+    }
+    return { configured: false }
+  }
+
+  globalThis.__openusage_plugin = { id: "cursor", probe, checkCredentials }
 })()

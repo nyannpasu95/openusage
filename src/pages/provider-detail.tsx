@@ -1,5 +1,5 @@
 import { ProviderCard } from "@/components/provider-card"
-import type { PluginDisplayState } from "@/lib/plugin-types"
+import type { CredentialStatus, PluginDisplayState } from "@/lib/plugin-types"
 import type { DisplayMode, ResetTimerDisplayMode, TimeFormatMode } from "@/lib/settings"
 
 interface ProviderDetailPageProps {
@@ -9,6 +9,8 @@ interface ProviderDetailPageProps {
   resetTimerDisplayMode: ResetTimerDisplayMode
   timeFormatMode?: TimeFormatMode
   onResetTimerDisplayModeToggle?: () => void
+  credentialStatus?: CredentialStatus
+  onSetUpCredentials?: () => void
 }
 
 export function ProviderDetailPage({
@@ -18,6 +20,8 @@ export function ProviderDetailPage({
   resetTimerDisplayMode,
   timeFormatMode = "auto",
   onResetTimerDisplayModeToggle,
+  credentialStatus,
+  onSetUpCredentials,
 }: ProviderDetailPageProps) {
   if (!plugin) {
     return (
@@ -44,6 +48,8 @@ export function ProviderDetailPage({
       resetTimerDisplayMode={resetTimerDisplayMode}
       timeFormatMode={timeFormatMode}
       onResetTimerDisplayModeToggle={onResetTimerDisplayModeToggle}
+      credentialStatus={credentialStatus}
+      onSetUpCredentials={onSetUpCredentials}
     />
   )
 }

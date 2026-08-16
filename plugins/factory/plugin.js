@@ -483,5 +483,10 @@
     return { plan: plan, lines: lines }
   }
 
-  globalThis.__openusage_plugin = { id: "factory", probe }
+  function checkCredentials(ctx) {
+    if (loadAuth(ctx)) return { configured: true, source: "Factory CLI" }
+    return { configured: false }
+  }
+
+  globalThis.__openusage_plugin = { id: "factory", probe, checkCredentials }
 })()

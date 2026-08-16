@@ -13,9 +13,14 @@ DeepSeek's API only exposes account balance via Bearer auth. Per-token or per-mo
 
 ## Authentication
 
-Reads `DEEPSEEK_API_KEY` from the environment. If missing or empty, the plugin throws:
+Reads the API key from the first available source:
 
-- `DeepSeek API key missing. Set DEEPSEEK_API_KEY.`
+1. The credential stored via **Settings → Credentials** (macOS Keychain)
+2. The `DEEPSEEK_API_KEY` environment variable
+
+If missing or empty, the plugin throws:
+
+- `DeepSeek API key missing. Set it in Settings → Credentials, or the DEEPSEEK_API_KEY env var.`
 
 ## Data Source
 
@@ -73,7 +78,7 @@ State is stored in `pluginDataDir/spent-today.json` and can be deleted to reset 
 
 | Condition | Message |
 |---|---|
-| Missing API key | `DeepSeek API key missing. Set DEEPSEEK_API_KEY.` |
+| Missing API key | `DeepSeek API key missing. Set it in Settings → Credentials, or the DEEPSEEK_API_KEY env var.` |
 | HTTP 401/403 | `API key invalid. Check your DeepSeek API key.` |
 | Non-2xx | `Balance request failed (HTTP {status}). Try again later.` |
 | Network failure | `Balance request failed. Check your connection.` |

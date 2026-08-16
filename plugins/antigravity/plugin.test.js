@@ -639,6 +639,26 @@ describe("antigravity plugin", () => {
     expect(capturedAuth).toBe("Bearer ya29.v1-token")
   })
 
+  it("checkCredentials reports keychain and missing auth sources", async () => {
+    const plugin = await loadPlugin()
+
+    const keychainCtx = makeCtx()
+    keychainCtx.host.ls.discover.mockReturnValue(null)
+    keychainCtx.host.keychain.readGenericPassword.mockImplementation((service, account) => {
+      if (service === "gemini" && account === "antigravity") {
+        return "go-keyring-base64:" + keychainCtx.base64.encode(JSON.stringify({
+          tokens: { access_token: "agy-keychain-token" },
+        }))
+      }
+      return null
+    })
+    expect(plugin.checkCredentials(keychainCtx)).toEqual({ configured: true, source: "Keychain" })
+
+    const emptyCtx = makeCtx()
+    emptyCtx.host.ls.discover.mockReturnValue(null)
+    expect(plugin.checkCredentials(emptyCtx)).toEqual({ configured: false })
+  })
+
   it("uses the agy keychain account when no local server or SQLite credentials work", async () => {
     const ctx = makeCtx()
     setupSqliteMock(ctx, null)

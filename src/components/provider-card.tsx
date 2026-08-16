@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from "react"
-import { AlertCircle, ExternalLink, Hourglass, RefreshCw } from "lucide-react"
+import { AlertCircle, ExternalLink, Hourglass, KeyRound, RefreshCw } from "lucide-react"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { PluginError } from "@/components/plugin-error"
 import { MetricLineRenderer } from "@/components/provider-card-metric-line"
 import { useNowTicker } from "@/hooks/use-now-ticker"
 import { REFRESH_COOLDOWN_MS, type DisplayMode, type ResetTimerDisplayMode, type TimeFormatMode } from "@/lib/settings"
-import type { ManifestLine, MetricLine, PluginLink } from "@/lib/plugin-types"
+import type { CredentialStatus, ManifestLine, MetricLine, PluginLink } from "@/lib/plugin-types"
 import { groupLinesByType } from "@/lib/group-lines-by-type"
 import { cn } from "@/lib/utils"
 
@@ -29,6 +29,8 @@ interface ProviderCardProps {
   resetTimerDisplayMode?: ResetTimerDisplayMode
   timeFormatMode?: TimeFormatMode
   onResetTimerDisplayModeToggle?: () => void
+  credentialStatus?: CredentialStatus
+  onSetUpCredentials?: () => void
 }
 
 function formatRelativeTime(diffMs: number): string {
@@ -58,6 +60,8 @@ export function ProviderCard({
   resetTimerDisplayMode = "relative",
   timeFormatMode = "auto",
   onResetTimerDisplayModeToggle,
+  credentialStatus,
+  onSetUpCredentials,
 }: ProviderCardProps) {
   const cooldownRemainingMs = useMemo(() => {
     if (!lastManualRefreshAt) return 0
@@ -101,6 +105,16 @@ export function ProviderCard({
         : highestUsageRatio > 0
           ? "On Track"
           : null
+
+  // Missing manual credential (API key/cookie): replace the raw probe error
+  // with an actionable setup prompt. Detected-kind plugins keep their error
+  // text, which already explains how to log in.
+  const showCredentialSetup =
+    credentialStatus != null &&
+    !credentialStatus.configured &&
+    (credentialStatus.kind === "apiKey" || credentialStatus.kind === "cookie") &&
+    !hasStaleData &&
+    !loading
 
   const tickerIntervalMs = cooldownRemainingMs > 0 ? 1000 : 30_000
 
@@ -251,9 +265,23 @@ export function ProviderCard({
             ))}
           </div>
         )}
-        {error && !hasStaleData && <PluginError message={error} />}
+        {showCredentialSetup ? (
+          <div className="mb-2 flex items-center justify-between gap-2 border border-dashed px-2 py-1.5 text-xs text-foreground">
+            <span className="flex items-center gap-1.5 truncate">
+              <KeyRound className="h-3 w-3 flex-shrink-0" />
+              Credentials Not Set
+            </span>
+            {onSetUpCredentials && (
+              <Button variant="outline" size="xs" className="h-6 text-[11px]" onClick={onSetUpCredentials}>
+                Set Up
+              </Button>
+            )}
+          </div>
+        ) : (
+          error && !hasStaleData && <PluginError message={error} />
+        )}
 
-        {error && hasStaleData && (
+        {error && hasStaleData && !showCredentialSetup && (
           <Tooltip>
             <TooltipTrigger
               render={(props) => (

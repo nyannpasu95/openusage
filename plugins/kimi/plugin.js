@@ -461,5 +461,11 @@
     }
   }
 
-  globalThis.__openusage_plugin = { id: "kimi", probe }
+  function checkCredentials(ctx) {
+    const creds = loadCredentials(ctx)
+    if (creds) return { configured: true, source: "Kimi CLI" }
+    return { configured: false }
+  }
+
+  globalThis.__openusage_plugin = { id: "kimi", probe, checkCredentials }
 })()

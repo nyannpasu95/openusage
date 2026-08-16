@@ -113,6 +113,7 @@ describe("synthetic plugin", () => {
     it("registers with correct id", () => {
       expect(plugin.id).toBe("synthetic");
       expect(typeof plugin.probe).toBe("function");
+      expect(typeof plugin.checkCredentials).toBe("function");
     });
   });
 
@@ -121,6 +122,46 @@ describe("synthetic plugin", () => {
       expect(() => plugin.probe(makeCtx())).toThrow(
         "Synthetic API key not found"
       );
+    });
+
+    it("prefers the credential stored in keychain over local config files", () => {
+      var ctx = makeCtx();
+      setPiAuth(ctx, "syn_piauth");
+      ctx.host.keychain.readGenericPassword.mockReturnValue("syn_stored");
+      mockHttp(ctx);
+      plugin.probe(ctx);
+      expect(ctx.host.keychain.readGenericPassword).toHaveBeenCalledWith(
+        "OpenUsage-synthetic-credential"
+      );
+      var call = ctx.host.http.request.mock.calls[0][0];
+      expect(call.headers.Authorization).toBe("Bearer syn_stored");
+    });
+
+    it("checkCredentials reports source Settings, Local Config, Env, or not configured", () => {
+      var keychainCtx = makeCtx();
+      keychainCtx.host.keychain.readGenericPassword.mockReturnValue("syn_stored");
+      expect(plugin.checkCredentials(keychainCtx)).toEqual({
+        configured: true,
+        source: "Settings",
+      });
+
+      var fileCtx = makeCtx();
+      setPiAuth(fileCtx, "syn_piauth");
+      expect(plugin.checkCredentials(fileCtx)).toEqual({
+        configured: true,
+        source: "Local Config",
+      });
+
+      var envCtx = makeCtx();
+      envCtx.host.env.get.mockImplementation(function (name) {
+        return name === "SYNTHETIC_API_KEY" ? "syn_env" : null;
+      });
+      expect(plugin.checkCredentials(envCtx)).toEqual({
+        configured: true,
+        source: "Env",
+      });
+
+      expect(plugin.checkCredentials(makeCtx())).toEqual({ configured: false });
     });
 
     // --- Pi auth.json (source 1) ---

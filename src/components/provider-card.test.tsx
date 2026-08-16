@@ -76,6 +76,65 @@ describe("ProviderCard", () => {
     expect(screen.getByText("Two")).toBeInTheDocument()
   })
 
+  it("shows setup prompt instead of raw error when manual credential is missing", () => {
+    const onSetUpCredentials = vi.fn()
+    render(
+      <ProviderCard
+        name="DeepSeek"
+        displayMode="used"
+        error="DeepSeek API key missing. Set it in Settings."
+        credentialStatus={{
+          pluginId: "deepseek",
+          kind: "apiKey",
+          label: "DeepSeek API Key",
+          configured: false,
+        }}
+        onSetUpCredentials={onSetUpCredentials}
+      />
+    )
+    expect(screen.getByText("Credentials Not Set")).toBeInTheDocument()
+    expect(screen.queryByText(/DeepSeek API key missing/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Set Up" }))
+    expect(onSetUpCredentials).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the raw error for detected-kind credentials that are not configured", () => {
+    render(
+      <ProviderCard
+        name="Copilot"
+        displayMode="used"
+        error="Not logged in. Run `gh auth login` first."
+        credentialStatus={{
+          pluginId: "copilot",
+          kind: "detected",
+          label: "GitHub Login",
+          configured: false,
+        }}
+      />
+    )
+    expect(screen.getByText(/Not logged in/)).toBeInTheDocument()
+    expect(screen.queryByText("Credentials Not Set")).not.toBeInTheDocument()
+  })
+
+  it("renders the error normally when credentials are configured", () => {
+    render(
+      <ProviderCard
+        name="DeepSeek"
+        displayMode="used"
+        error="API key invalid."
+        credentialStatus={{
+          pluginId: "deepseek",
+          kind: "apiKey",
+          label: "DeepSeek API Key",
+          configured: true,
+          source: "Settings",
+        }}
+      />
+    )
+    expect(screen.getByText("API key invalid.")).toBeInTheDocument()
+    expect(screen.queryByText("Credentials Not Set")).not.toBeInTheDocument()
+  })
+
   it("shows loading spinner when retry is enabled", () => {
     const { container } = render(
       <ProviderCard

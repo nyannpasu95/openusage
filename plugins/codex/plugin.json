@@ -6,6 +6,11 @@
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#74AA9C",
+  "credential": {
+    "kind": "detected",
+    "label": "Codex Login",
+    "hint": "Log in with the Codex CLI (`codex login`) to create a session."
+  },
   "links": [
     { "label": "Status", "url": "https://status.openai.com/" },
     { "label": "Usage dashboard", "url": "https://chatgpt.com/codex/settings/usage" }

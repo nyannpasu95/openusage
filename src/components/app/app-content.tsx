@@ -6,6 +6,7 @@ import { ProviderDetailPage } from "@/pages/provider-detail"
 import type { DisplayPluginState } from "@/hooks/app/use-app-plugin-views"
 import type { SettingsPluginState } from "@/hooks/app/use-settings-plugin-list"
 import type { TraySettingsPreview } from "@/hooks/app/use-tray-icon"
+import { useAppPluginStore } from "@/stores/app-plugin-store"
 import { useAppPreferencesStore } from "@/stores/app-preferences-store"
 import { useAppUiStore } from "@/stores/app-ui-store"
 import type {
@@ -43,6 +44,8 @@ export type AppContentActionProps = {
   onRetryPlugin: (id: string) => void
   onReorder: (orderedIds: string[]) => void
   onToggle: (id: string) => void
+  onSetCredential: (pluginId: string, value: string) => Promise<void>
+  onClearCredential: (pluginId: string) => Promise<void>
   onAutoUpdateIntervalChange: (value: AutoUpdateIntervalMinutes) => void
   onThemeModeChange: (mode: ThemeMode) => void
   onDisplayModeChange: (mode: DisplayMode) => void
@@ -66,6 +69,8 @@ export function AppContent({
   onRetryPlugin,
   onReorder,
   onToggle,
+  onSetCredential,
+  onClearCredential,
   onAutoUpdateIntervalChange,
   onThemeModeChange,
   onDisplayModeChange,
@@ -79,11 +84,16 @@ export function AppContent({
   onStartOnLoginChange,
   onLowUsageAlertsChange,
 }: AppContentProps) {
-  const { activeView } = useAppUiStore(
+  const { activeView, setActiveView } = useAppUiStore(
     useShallow((state) => ({
       activeView: state.activeView,
+      setActiveView: state.setActiveView,
     }))
   )
+
+  const credentialStatuses = useAppPluginStore((state) => state.credentialStatuses)
+
+  const handleSetUpCredentials = () => setActiveView("settings")
 
   const {
     displayMode,
@@ -120,6 +130,8 @@ export function AppContent({
         resetTimerDisplayMode={resetTimerDisplayMode}
         timeFormatMode={timeFormatMode}
         onResetTimerDisplayModeToggle={onResetTimerDisplayModeToggle}
+        credentialStatuses={credentialStatuses}
+        onSetUpCredentials={handleSetUpCredentials}
       />
     )
   }
@@ -131,6 +143,9 @@ export function AppContent({
           plugins={settingsPlugins}
           onReorder={onReorder}
           onToggle={onToggle}
+          credentialStatuses={credentialStatuses}
+          onSetCredential={onSetCredential}
+          onClearCredential={onClearCredential}
           autoUpdateInterval={autoUpdateInterval}
           onAutoUpdateIntervalChange={onAutoUpdateIntervalChange}
           themeMode={themeMode}
@@ -169,6 +184,8 @@ export function AppContent({
       resetTimerDisplayMode={resetTimerDisplayMode}
       timeFormatMode={timeFormatMode}
       onResetTimerDisplayModeToggle={onResetTimerDisplayModeToggle}
+      credentialStatus={selectedPlugin ? credentialStatuses[selectedPlugin.meta.id] : undefined}
+      onSetUpCredentials={handleSetUpCredentials}
     />
   )
 }

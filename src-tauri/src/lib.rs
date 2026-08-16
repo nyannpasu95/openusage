@@ -1,6 +1,7 @@
 #[cfg(target_os = "macos")]
 mod app_nap;
 mod config;
+mod credentials;
 mod local_http_api;
 mod log_path;
 mod panel;
@@ -159,6 +160,16 @@ pub struct PluginMeta {
     /// Label of the progress line marked `"period": "weekly"`, if any.
     /// Drives the menubar weekly-metric preference.
     pub weekly_candidate: Option<String>,
+    /// Declares the plugin's credential model, if it has one.
+    pub credential: Option<CredentialMetaDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialMetaDto {
+    pub kind: String,
+    pub label: String,
+    pub hint: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -516,6 +527,13 @@ fn list_plugins(state: tauri::State<'_, Mutex<AppState>>) -> Vec<PluginMeta> {
                     .collect(),
                 primary_candidates,
                 weekly_candidate,
+                credential: plugin.manifest.credential.as_ref().map(|credential| {
+                    CredentialMetaDto {
+                        kind: credential.kind.clone(),
+                        label: credential.label.clone(),
+                        hint: credential.hint.clone(),
+                    }
+                }),
             }
         })
         .collect()
@@ -563,7 +581,10 @@ pub fn run() {
             list_plugins,
             get_log_path,
             get_local_api_status,
-            update_global_shortcut
+            update_global_shortcut,
+            credentials::get_credential_statuses,
+            credentials::set_plugin_credential,
+            credentials::clear_plugin_credential
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -720,9 +741,8 @@ mod tests {
         // via a blob: URL (src/lib/tray-bars-icon.ts). The CSP is only injected
         // in packaged builds, so img-src must allow blob: or the tray icon
         // silently keeps the default logo instead of showing usage.
-        let conf: serde_json::Value =
-            serde_json::from_str(include_str!("../tauri.conf.json"))
-                .expect("tauri.conf.json must be valid JSON");
+        let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json"))
+            .expect("tauri.conf.json must be valid JSON");
         let csp = conf["app"]["security"]["csp"]
             .as_str()
             .expect("csp must be set in tauri.conf.json");

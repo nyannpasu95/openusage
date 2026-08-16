@@ -6,6 +6,11 @@
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#4D6BFE",
+  "credential": {
+    "kind": "apiKey",
+    "label": "DeepSeek API Key",
+    "hint": "Create an API key at platform.deepseek.com → API Keys."
+  },
   "links": [
     { "label": "Usage", "url": "https://platform.deepseek.com/usage" },
     { "label": "Billing", "url": "https://platform.deepseek.com/billing" }

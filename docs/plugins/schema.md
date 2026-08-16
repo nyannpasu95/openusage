@@ -49,6 +49,7 @@ Bundled plugins live under `src-tauri/resources/bundled_plugins/<id>/`.
   "entry": "plugin.js",
   "icon": "icon.svg",
   "links": [{ "label": "Status", "url": "https://status.example.com" }],
+  "credential": { "kind": "apiKey", "label": "My Provider API Key" },
   "lines": [
     { "type": "badge", "label": "Plan", "scope": "overview" },
     { "type": "progress", "label": "Usage", "scope": "overview", "primaryOrder": 1 },
@@ -66,6 +67,7 @@ Bundled plugins live under `src-tauri/resources/bundled_plugins/<id>/`.
 | `entry`         | string | Yes      | Relative path to JS entry file             |
 | `icon`          | string | Yes      | Relative path to SVG icon file             |
 | `links`         | array  | No       | Optional quick links shown on detail page  |
+| `credential`    | object | No       | Declares how the plugin authenticates (see below) |
 | `lines`         | array  | Yes      | Output shape used for loading skeletons    |
 
 Validation rules:
@@ -82,6 +84,24 @@ Validation rules:
 |---------|--------|----------|-------------|
 | `label` | string | Yes      | Link text shown in the provider detail quick-actions row |
 | `url`   | string | Yes      | External destination opened in the browser (`http/https` only) |
+
+### Credential (Optional)
+
+Declares the plugin's login model so the app can show credential status in
+Settings and on the provider card. Plugins with a `credential` block must also
+export `checkCredentials()` (see the plugin API docs).
+
+| Field  | Type   | Required | Description |
+|--------|--------|----------|-------------|
+| `kind` | string | Yes      | `"apiKey"`, `"cookie"`, or `"detected"` |
+| `label`| string | Yes      | Titlecase label shown in Settings (e.g. `"DeepSeek API Key"`) |
+| `hint` | string | No       | Shown when the credential is not set (e.g. where to get a key) |
+
+- `"apiKey"` / `"cookie"` — the user can paste the value in Settings; it is
+  stored in the macOS Keychain under the service `OpenUsage-{id}-credential`
+  and the plugin should read that service before its env/file fallbacks.
+- `"detected"` — the credential comes from another tool's login (OAuth via a
+  CLI or desktop app). Status-only; no manual entry.
 
 ## Output Shape Declaration
 

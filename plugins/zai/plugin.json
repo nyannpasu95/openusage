@@ -6,6 +6,11 @@
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#2D2D2D",
+  "credential": {
+    "kind": "apiKey",
+    "label": "Z.ai API Key",
+    "hint": "Create an API key at z.ai → API Keys."
+  },
   "lines": [
     { "type": "progress", "label": "Session", "scope": "overview", "primaryOrder": 1 },
     { "type": "progress", "label": "Weekly", "scope": "overview", "period": "weekly" },

@@ -13,6 +13,8 @@ The plugin searches multiple sources for a Synthetic API key, checking under the
 
 ### Credential Sources (checked in order)
 
+**0. App Settings** — a key pasted in **Settings → Credentials** (stored in the macOS Keychain). This takes priority over everything below.
+
 **1. Pi auth.json** — `~/.pi/agent/auth.json`
 
 ```json
@@ -159,7 +161,7 @@ Progress lines include:
 
 | Condition              | Message                                                                   |
 |------------------------|---------------------------------------------------------------------------|
-| No API key found       | "Synthetic API key not found. Set SYNTHETIC_API_KEY or add key to ~/.pi/agent/auth.json" |
+| No API key found       | "Synthetic API key not found. Set it in Settings → Credentials, the SYNTHETIC_API_KEY env var, or ~/.pi/agent/auth.json" |
 | 401/403                | "API key invalid or expired. Check your Synthetic API key."               |
 | Non-2xx with detail    | Error message from API response                                           |
 | Non-2xx without detail | "Request failed (HTTP {status})"                                          |

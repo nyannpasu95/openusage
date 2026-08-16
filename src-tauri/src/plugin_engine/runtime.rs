@@ -767,6 +767,7 @@ mod tests {
                 brand_color: None,
                 lines: vec![],
                 links: vec![],
+                credential: None,
             },
             plugin_dir: PathBuf::from("."),
             entry_script: Arc::from(entry_script),

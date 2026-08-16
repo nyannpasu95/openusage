@@ -6,6 +6,11 @@
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#000000",
+  "credential": {
+    "kind": "detected",
+    "label": "Grok Login",
+    "hint": "Log in with the Grok CLI: run `grok login`."
+  },
   "links": [
     { "label": "Usage", "url": "https://grok.com/?_s=usage" }
   ],

@@ -1,5 +1,5 @@
 import { ProviderCard } from "@/components/provider-card"
-import type { MetricLine, PluginDisplayState } from "@/lib/plugin-types"
+import type { CredentialStatus, MetricLine, PluginDisplayState } from "@/lib/plugin-types"
 import type { DisplayMode, ResetTimerDisplayMode, TimeFormatMode } from "@/lib/settings"
 import { formatResetRelativeLabel } from "@/lib/reset-tooltip"
 
@@ -10,6 +10,8 @@ interface OverviewPageProps {
   resetTimerDisplayMode: ResetTimerDisplayMode
   timeFormatMode?: TimeFormatMode
   onResetTimerDisplayModeToggle?: () => void
+  credentialStatuses?: Record<string, CredentialStatus>
+  onSetUpCredentials?: () => void
 }
 
 type ProgressLine = Extract<MetricLine, { type: "progress" }>
@@ -61,6 +63,8 @@ export function OverviewPage({
   resetTimerDisplayMode,
   timeFormatMode = "auto",
   onResetTimerDisplayModeToggle,
+  credentialStatuses,
+  onSetUpCredentials,
 }: OverviewPageProps) {
   const summary = buildUsageSummary(plugins)
 
@@ -122,6 +126,8 @@ export function OverviewPage({
             resetTimerDisplayMode={resetTimerDisplayMode}
             timeFormatMode={timeFormatMode}
             onResetTimerDisplayModeToggle={onResetTimerDisplayModeToggle}
+            credentialStatus={credentialStatuses?.[plugin.meta.id]}
+            onSetUpCredentials={onSetUpCredentials}
           />
         ))
       )}

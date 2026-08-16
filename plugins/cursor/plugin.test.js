@@ -26,6 +26,25 @@ describe("cursor plugin", () => {
     expect(() => plugin.probe(ctx)).toThrow("Not logged in")
   })
 
+  it("checkCredentials reports keychain and missing auth sources", async () => {
+    const plugin = await loadPlugin()
+
+    const keychainCtx = makeCtx()
+    keychainCtx.host.sqlite.query.mockReturnValue(JSON.stringify([]))
+    keychainCtx.host.keychain.readGenericPassword.mockImplementation((service) => {
+      if (service === "cursor-access-token") return "keychain-access-token"
+      return null
+    })
+    expect(plugin.checkCredentials(keychainCtx)).toEqual({
+      configured: true,
+      source: "Cursor App",
+    })
+
+    const emptyCtx = makeCtx()
+    emptyCtx.host.sqlite.query.mockReturnValue(JSON.stringify([]))
+    expect(plugin.checkCredentials(emptyCtx)).toEqual({ configured: false })
+  })
+
   it("loads tokens from keychain when sqlite has none", async () => {
     const ctx = makeCtx()
     ctx.host.sqlite.query.mockReturnValue(JSON.stringify([]))

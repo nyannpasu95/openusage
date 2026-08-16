@@ -24,6 +24,7 @@
     4500: "Max",
   }
   const MODEL_CALLS_PER_PROMPT = 15
+  const KEYCHAIN_SERVICE = "OpenUsage-minimax-credential"
 
   function readString(value) {
     if (typeof value !== "string") return null
@@ -111,7 +112,25 @@
     return secOverflow <= msOverflow ? asSecondsMs : asMillisecondsMs
   }
 
+  function readStoredCredential(ctx) {
+    if (!ctx.host.keychain || typeof ctx.host.keychain.readGenericPassword !== "function") {
+      return null
+    }
+    try {
+      const stored = ctx.host.keychain.readGenericPassword(KEYCHAIN_SERVICE)
+      if (typeof stored === "string" && stored.trim()) return stored.trim()
+    } catch (e) {
+      if (String(e).indexOf("item not found") === -1) {
+        ctx.host.log.warn("keychain read failed for stored credential: " + String(e))
+      }
+    }
+    return null
+  }
+
   function loadApiKey(ctx, endpointSelection) {
+    const stored = readStoredCredential(ctx)
+    if (stored) return { value: stored, source: "Settings" }
+
     const envVars = endpointSelection === "CN" ? CN_API_KEY_ENV_VARS : GLOBAL_API_KEY_ENV_VARS
     for (let i = 0; i < envVars.length; i += 1) {
       const name = envVars[i]
@@ -124,7 +143,7 @@
       const key = readString(value)
       if (key) {
         ctx.host.log.info("api key loaded from " + name)
-        return { value: key, source: name }
+        return { value: key, source: "Env" }
       }
     }
     return null
@@ -423,7 +442,7 @@
 
     if (!parsed) {
       if (lastError) throw lastError
-      throw "MiniMax API key missing. Set MINIMAX_API_KEY or MINIMAX_CN_API_KEY."
+      throw "MiniMax API key missing. Set it in Settings → Credentials, or the MINIMAX_API_KEY / MINIMAX_CN_API_KEY env vars."
     }
 
     // CN API returns model call counts (needs division by 15 for prompts)
@@ -451,5 +470,13 @@
     return result
   }
 
-  globalThis.__openusage_plugin = { id: "minimax", probe }
+  function checkCredentials(ctx) {
+    const global = loadApiKey(ctx, "GLOBAL")
+    if (global) return { configured: true, source: global.source }
+    const cn = loadApiKey(ctx, "CN")
+    if (cn) return { configured: true, source: cn.source }
+    return { configured: false }
+  }
+
+  globalThis.__openusage_plugin = { id: "minimax", probe, checkCredentials }
 })()

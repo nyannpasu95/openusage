@@ -68,6 +68,20 @@ describe("copilot plugin", () => {
     expect(() => plugin.probe(ctx)).toThrow("Not logged in. Run `gh auth login` first.");
   });
 
+  it("checkCredentials reports the token source", async () => {
+    const plugin = await loadPlugin();
+
+    const appCtx = makePluginTestContext();
+    setKeychainToken(appCtx, "ghu_keychain");
+    expect(plugin.checkCredentials(appCtx)).toEqual({ configured: true, source: "Keychain" });
+
+    const ghCtx = makePluginTestContext();
+    setGhCliKeychain(ghCtx, "gho_plain_token");
+    expect(plugin.checkCredentials(ghCtx)).toEqual({ configured: true, source: "gh CLI" });
+
+    expect(plugin.checkCredentials(makePluginTestContext())).toEqual({ configured: false });
+  });
+
   it("loads token from OhMyUsage keychain", async () => {
     const ctx = makePluginTestContext();
     setKeychainToken(ctx, "ghu_keychain");

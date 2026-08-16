@@ -69,6 +69,20 @@ describe("devin plugin", () => {
     vi.resetModules()
   })
 
+  it("checkCredentials reports CLI, app, and missing auth sources", async () => {
+    const plugin = await loadPlugin()
+
+    const cliCtx = makeCtx()
+    cliCtx.host.fs.writeText(CREDENTIALS_PATH, makeCredentialsToml())
+    expect(plugin.checkCredentials(cliCtx)).toEqual({ configured: true, source: "Devin CLI" })
+
+    const appCtx = makeCtx()
+    mockAppAuth(appCtx)
+    expect(plugin.checkCredentials(appCtx)).toEqual({ configured: true, source: "Devin App" })
+
+    expect(plugin.checkCredentials(makeCtx())).toEqual({ configured: false })
+  })
+
   it("loads CLI credentials first and renders quota lines", async () => {
     const ctx = makeCtx()
     ctx.host.fs.writeText(CREDENTIALS_PATH, makeCredentialsToml())

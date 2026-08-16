@@ -20,16 +20,18 @@ Note: `cs-data.qianwenai.com` sits behind an anti-bot gateway that rejects reque
 
 Resolved in order:
 
-1. `QWEN_COOKIE` environment variable.
-2. The cookie file `~/.openusage/qwen-cookie.txt` (read fresh on every refresh — updating it needs no app restart).
+1. The cookie pasted in **Settings → Credentials** (stored in the macOS Keychain).
+2. `QWEN_COOKIE` environment variable.
+3. The cookie file `~/.openusage/qwen-cookie.txt` (read fresh on every refresh — updating it needs no app restart).
 
 To set it up:
 
 1. Log in at `https://platform.qianwenai.com/home/billing/subscription/token-plan-individual`.
 2. Open the browser's developer tools → Network tab.
 3. Refresh the page, click any request to `cs-data.qianwenai.com` or `platform-home.qianwenai.com`, and copy the full `Cookie:` request header value.
-4. Save it with either method:
-   - Easiest: run `pbpaste > ~/.openusage/qwen-cookie.txt` right after copying (creates `~/.openusage` if needed: `mkdir -p ~/.openusage`).
+4. Save it with any method:
+   - Easiest: paste it into OhMyUsage's **Settings → Credentials** (use the Set Up prompt on the provider card or the Credentials section in Settings).
+   - Or run `pbpaste > ~/.openusage/qwen-cookie.txt` right after copying (creates `~/.openusage` if needed: `mkdir -p ~/.openusage`).
    - Or set it as the `QWEN_COOKIE` environment variable (requires an app restart to pick up changes).
 
 Before querying, the plugin calls `GET /tool/user/info.json` with the cookie to validate the session and resolve `secToken` (sent as the `sec_token` form field; falls back to `0` like the console does).
@@ -75,8 +77,8 @@ Teams plan:
 
 | Condition | Message |
 |---|---|
-| Missing cookie (both sources) | `Qianwen console cookie missing. Copy the Cookie header from platform.qianwenai.com, then run: pbpaste > ~/.openusage/qwen-cookie.txt (or set QWEN_COOKIE).` |
-| HTTP 401/403, 3xx redirect, login HTML, or `ConsoleNeedLogin` payload | `Qianwen console session expired. Copy a fresh Cookie header from platform.qianwenai.com, then run: pbpaste > ~/.openusage/qwen-cookie.txt.` |
+| Missing cookie (all sources) | `Qianwen console cookie missing. Paste the Cookie header from platform.qianwenai.com in Settings → Credentials (or run: pbpaste > ~/.openusage/qwen-cookie.txt).` |
+| HTTP 401/403, 3xx redirect, login HTML, or `ConsoleNeedLogin` payload | `Qianwen console session expired. Paste a fresh Cookie header in Settings → Credentials, or run: pbpaste > ~/.openusage/qwen-cookie.txt.` |
 | Other non-2xx | `Token Plan request failed (HTTP {status}). Try again later.` |
 | Network failure while resolving a plan | `Token Plan request failed. Check your connection.` |
 | Unparseable payload | `Token Plan response invalid. Try again later.` |

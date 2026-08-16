@@ -5,6 +5,7 @@
   var DEFAULT_PI_AGENT_DIR = "~/.pi/agent";
   var FACTORY_SETTINGS_PATH = "~/.factory/settings.json";
   var OPENCODE_AUTH_PATH = "~/.local/share/opencode/auth.json";
+  var KEYCHAIN_SERVICE = "OpenUsage-synthetic-credential";
 
   // Provider names a user might register Synthetic under in various harnesses
   var PROVIDER_NAMES = ["synthetic", "synthetic.new", "syn"];
@@ -81,19 +82,32 @@
     return fallback;
   }
 
-  function loadApiKey(ctx) {
+  function loadApiKeyWithSource(ctx) {
+    // 0. Credential stored via app Settings — highest priority
+    if (ctx.host.keychain && typeof ctx.host.keychain.readGenericPassword === "function") {
+      try {
+        var stored = ctx.host.keychain.readGenericPassword(KEYCHAIN_SERVICE);
+        var storedKey = extractKey(stored);
+        if (storedKey) return { value: storedKey, source: "Settings" };
+      } catch (e) {
+        if (String(e).indexOf("item not found") === -1) {
+          ctx.host.log.warn("keychain read failed for stored credential: " + e);
+        }
+      }
+    }
+
     var piDir = resolvePiAgentDir(ctx);
 
     // 1. Pi auth.json — primary source
     var piAuth = tryReadJson(ctx, piDir + "/auth.json");
     var key = findKeyInProviderMap(piAuth);
-    if (key) return key;
+    if (key) return { value: key, source: "Local Config" };
 
     // 2. Pi models.json — custom provider config with apiKey field
     var piModels = tryReadJson(ctx, piDir + "/models.json");
     if (piModels && piModels.providers) {
       key = findKeyInProviderMap(piModels.providers);
-      if (key) return key;
+      if (key) return { value: key, source: "Local Config" };
     }
 
     // 3. Factory/Droid settings.json — custom models with synthetic.new baseUrl
@@ -107,7 +121,7 @@
           model.baseUrl.indexOf("synthetic.new") !== -1
         ) {
           key = extractKey(model.apiKey);
-          if (key) return key;
+          if (key) return { value: key, source: "Local Config" };
         }
       }
     }
@@ -115,21 +129,26 @@
     // 4. OpenCode auth.json
     var ocAuth = tryReadJson(ctx, OPENCODE_AUTH_PATH);
     key = findKeyInProviderMap(ocAuth);
-    if (key) return key;
+    if (key) return { value: key, source: "Local Config" };
 
     // 5. SYNTHETIC_API_KEY env var
     var envKey = ctx.host.env.get("SYNTHETIC_API_KEY");
     if (typeof envKey === "string" && envKey.trim()) {
-      return envKey.trim();
+      return { value: envKey.trim(), source: "Env" };
     }
 
     return null;
   }
 
+  function loadApiKey(ctx) {
+    var loaded = loadApiKeyWithSource(ctx);
+    return loaded ? loaded.value : null;
+  }
+
   function probe(ctx) {
     var apiKey = loadApiKey(ctx);
     if (!apiKey) {
-      throw "Synthetic API key not found. Set SYNTHETIC_API_KEY or add key to ~/.pi/agent/auth.json";
+      throw "Synthetic API key not found. Set it in Settings → Credentials, the SYNTHETIC_API_KEY env var, or ~/.pi/agent/auth.json";
     }
 
     var resp, json;
@@ -255,5 +274,10 @@
     return { lines: lines };
   }
 
-  globalThis.__openusage_plugin = { id: "synthetic", probe: probe };
+  function checkCredentials(ctx) {
+    var loaded = loadApiKeyWithSource(ctx);
+    return loaded ? { configured: true, source: loaded.source } : { configured: false };
+  }
+
+  globalThis.__openusage_plugin = { id: "synthetic", probe: probe, checkCredentials: checkCredentials };
 })();

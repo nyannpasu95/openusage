@@ -9,7 +9,7 @@ Tracks [Z.ai](https://z.ai) (Zhipu AI) usage quotas for GLM coding plans.
 
 - **Protocol:** REST (plain JSON)
 - **Base URL:** `https://api.z.ai/`
-- **Auth:** API key via environment variable (`ZAI_API_KEY`, fallback `GLM_API_KEY`)
+- **Auth:** API key via Settings → Credentials (macOS Keychain), or the `ZAI_API_KEY` / `GLM_API_KEY` environment variables
 - **Session utilization:** percentage (0-100)
 - **Weekly utilization:** percentage (0-100)
 - **Web searches:** count-based (used / limit)
@@ -19,7 +19,8 @@ Tracks [Z.ai](https://z.ai) (Zhipu AI) usage quotas for GLM coding plans.
 
 1. [Subscribe to a GLM Coding plan](https://z.ai/subscribe) and get your API key from
    the [Z.ai console](https://z.ai/manage-apikey/apikey-list)
-2. Set `ZAI_API_KEY` (fallback: `GLM_API_KEY`)
+2. Either paste the key in **Settings → Credentials** (easiest), or set the
+   `ZAI_API_KEY` (fallback: `GLM_API_KEY`) environment variable
 
 OhMyUsage is a GUI app. A one-off `export ...` in a terminal session will not be visible when you launch OhMyUsage from
 Spotlight/Launchpad. Persist it, then restart OhMyUsage.
@@ -175,7 +176,7 @@ Numeric strings are accepted for usage fields. Empty or non-numeric values are t
 
 | Condition     | Message                                                    |
 |---------------|------------------------------------------------------------|
-| No API key    | "No ZAI_API_KEY found. Set up environment variable first." |
+| No API key    | "No Z.ai API key found. Set it in Settings → Credentials, or the ZAI_API_KEY / GLM_API_KEY env vars." |
 | 401/403       | "API key invalid. Check your Z.ai API key."                |
 | HTTP error    | "Usage request failed (HTTP {status}). Try again later."   |
 | Network error | "Usage request failed. Check your connection."             |

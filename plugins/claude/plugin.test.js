@@ -29,6 +29,27 @@ describe("claude plugin", () => {
     expect(() => plugin.probe(ctx)).toThrow("Not logged in")
   })
 
+  it("checkCredentials reports env, keychain, and missing sources", async () => {
+    const plugin = await loadPlugin()
+
+    const envCtx = makeCtx()
+    envCtx.host.env.get.mockImplementation((name) =>
+      name === "CLAUDE_CODE_OAUTH_TOKEN" ? "env-token" : null
+    )
+    expect(plugin.checkCredentials(envCtx)).toEqual({ configured: true, source: "Env" })
+
+    const keychainCtx = makeCtx()
+    keychainCtx.host.keychain.readGenericPassword.mockReturnValue(
+      JSON.stringify({ claudeAiOauth: { accessToken: "tok" } })
+    )
+    expect(plugin.checkCredentials(keychainCtx)).toEqual({
+      configured: true,
+      source: "Claude Code",
+    })
+
+    expect(plugin.checkCredentials(makeCtx())).toEqual({ configured: false })
+  })
+
   it("throws when credentials are unreadable", async () => {
     const ctx = makeCtx()
     ctx.host.fs.exists = () => true

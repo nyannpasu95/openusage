@@ -6,6 +6,11 @@
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#000000",
+  "credential": {
+    "kind": "detected",
+    "label": "Kimi Code Login",
+    "hint": "Log in with Kimi Code once to create ~/.kimi-code credentials."
+  },
   "lines": [
     { "type": "progress", "label": "Session", "scope": "overview", "primaryOrder": 1 },
     { "type": "progress", "label": "Weekly", "scope": "overview", "period": "weekly", "primaryOrder": 2 },

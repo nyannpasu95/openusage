@@ -21,6 +21,17 @@ describe("kimi plugin", () => {
     expect(() => plugin.probe(ctx)).toThrow("Not logged in")
   })
 
+  it("checkCredentials reports configured when the credentials file exists", async () => {
+    const ctx = makeCtx()
+    ctx.host.fs.writeText(
+      CRED_PATH,
+      JSON.stringify({ access_token: "tok", refresh_token: "refresh" })
+    )
+    const plugin = await loadPlugin()
+    expect(plugin.checkCredentials(ctx)).toEqual({ configured: true, source: "Kimi CLI" })
+    expect(plugin.checkCredentials(makeCtx())).toEqual({ configured: false })
+  })
+
   it("refreshes token and renders session + weekly usage", async () => {
     const ctx = makeCtx()
     ctx.host.fs.writeText(

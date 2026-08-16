@@ -284,6 +284,16 @@
     }
   }
 
+  function checkCredentials(ctx) {
+    if (loadCredentialsFile(ctx)) return { configured: true, source: "Devin CLI" }
+    for (var i = 0; i < APP_AUTH_SOURCES.length; i++) {
+      if (readAppAuth(ctx, APP_AUTH_SOURCES[i])) {
+        return { configured: true, source: "Devin App" }
+      }
+    }
+    return { configured: false }
+  }
+
   function probe(ctx) {
     var sawApiKey = false
     var sawAuthFailure = false
@@ -330,5 +340,5 @@
     return false
   }
 
-  globalThis.__openusage_plugin = { id: "devin", probe: probe }
+  globalThis.__openusage_plugin = { id: "devin", probe: probe, checkCredentials: checkCredentials }
 })()

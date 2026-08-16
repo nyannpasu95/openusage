@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { AppShell } from "@/components/app/app-shell"
 import { useAppPluginViews } from "@/hooks/app/use-app-plugin-views"
+import { useCredentialStatuses } from "@/hooks/app/use-credential-statuses"
 import { useProbe } from "@/hooks/app/use-probe"
 import { useSettingsBootstrap } from "@/hooks/app/use-settings-bootstrap"
 import { useSettingsDisplayActions } from "@/hooks/app/use-settings-display-actions"
@@ -42,12 +43,14 @@ function App() {
     setPluginsMeta,
     pluginSettings,
     setPluginSettings,
+    setCredentialStatuses,
   } = useAppPluginStore(
     useShallow((state) => ({
       pluginsMeta: state.pluginsMeta,
       setPluginsMeta: state.setPluginsMeta,
       pluginSettings: state.pluginSettings,
       setPluginSettings: state.setPluginSettings,
+      setCredentialStatuses: state.setCredentialStatuses,
     }))
   )
 
@@ -246,6 +249,17 @@ function App() {
     scheduleTrayIconUpdate,
   })
 
+  const {
+    handleSetCredential,
+    handleClearCredential,
+  } = useCredentialStatuses({
+    pluginStates,
+    setCredentialStatuses,
+    setLoadingForPlugins,
+    setErrorForPlugins,
+    startBatch,
+  })
+
   const settingsPlugins = useSettingsPluginList({
     pluginSettings,
     pluginsMeta,
@@ -349,6 +363,8 @@ function App() {
         onRetryPlugin: handleRetryPlugin,
         onReorder: handleReorder,
         onToggle: handleToggle,
+        onSetCredential: handleSetCredential,
+        onClearCredential: handleClearCredential,
         onAutoUpdateIntervalChange: handleAutoUpdateIntervalChange,
         onThemeModeChange: handleThemeModeChange,
         onDisplayModeChange: handleDisplayModeChange,

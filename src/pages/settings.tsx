@@ -16,11 +16,13 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { CredentialsSection } from "@/components/credentials-section";
 import { GlobalShortcutSection } from "@/components/global-shortcut-section";
 import { LocalApiSection } from "@/components/local-api-section";
+import type { CredentialStatus } from "@/lib/plugin-types";
 import { getBarFillLayout, getTrayIconSizePx } from "@/lib/tray-bars-icon";
 import {
   AUTO_UPDATE_OPTIONS,
@@ -269,6 +271,9 @@ interface SettingsPageProps {
   plugins: PluginConfig[];
   onReorder: (orderedIds: string[]) => void;
   onToggle: (id: string) => void;
+  credentialStatuses: Record<string, CredentialStatus>;
+  onSetCredential: (pluginId: string, value: string) => Promise<void>;
+  onClearCredential: (pluginId: string) => Promise<void>;
   autoUpdateInterval: AutoUpdateIntervalMinutes;
   onAutoUpdateIntervalChange: (value: AutoUpdateIntervalMinutes) => void;
   themeMode: ThemeMode;
@@ -296,6 +301,9 @@ export function SettingsPage({
   plugins,
   onReorder,
   onToggle,
+  credentialStatuses,
+  onSetCredential,
+  onClearCredential,
   autoUpdateInterval,
   onAutoUpdateIntervalChange,
   themeMode,
@@ -319,6 +327,15 @@ export function SettingsPage({
   onLowUsageAlertsChange,
 }: SettingsPageProps) {
   const [lowUsageAlertError, setLowUsageAlertError] = useState<string | null>(null);
+  const credentialRows = useMemo(
+    () =>
+      plugins.flatMap((plugin) => {
+        const status = credentialStatuses[plugin.id];
+        if (!status) return [];
+        return [{ id: plugin.id, name: plugin.name, status }];
+      }),
+    [plugins, credentialStatuses]
+  );
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -596,6 +613,11 @@ export function SettingsPage({
         </label>
       </section>
       <LocalApiSection />
+      <CredentialsSection
+        rows={credentialRows}
+        onSetCredential={onSetCredential}
+        onClearCredential={onClearCredential}
+      />
       <section>
         <h3 className="text-lg font-semibold mb-0">Plugins</h3>
         <p className="text-sm text-muted-foreground mb-2">

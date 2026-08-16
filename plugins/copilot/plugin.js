@@ -275,5 +275,12 @@
     return { plan: plan, lines: lines };
   }
 
-  globalThis.__openusage_plugin = { id: "copilot", probe };
+  function checkCredentials(ctx) {
+    const loaded = loadToken(ctx);
+    if (!loaded) return { configured: false };
+    const source = loaded.source === "gh-cli" ? "gh CLI" : "Keychain";
+    return { configured: true, source: source };
+  }
+
+  globalThis.__openusage_plugin = { id: "copilot", probe, checkCredentials };
 })();

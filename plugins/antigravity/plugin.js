@@ -708,5 +708,16 @@
     throw LOGIN_MESSAGE
   }
 
-  globalThis.__openusage_plugin = { id: "antigravity", probe: probe }
+  function checkCredentials(ctx) {
+    if (discoverLs(ctx) || discoverAgyLs(ctx)) {
+      return { configured: true, source: "Antigravity App" }
+    }
+    if (loadOAuthTokenCandidates(ctx).length > 0) {
+      return { configured: true, source: "Antigravity App" }
+    }
+    if (loadAgyKeychainToken(ctx)) return { configured: true, source: "Keychain" }
+    return { configured: false }
+  }
+
+  globalThis.__openusage_plugin = { id: "antigravity", probe: probe, checkCredentials: checkCredentials }
 })()

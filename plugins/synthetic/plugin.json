@@ -6,6 +6,11 @@
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#000000",
+  "credential": {
+    "kind": "apiKey",
+    "label": "Synthetic API Key",
+    "hint": "Create an API key at synthetic.new, or log in with the Pi coding agent."
+  },
   "lines": [
     { "type": "progress", "label": "5h Rate Limit", "scope": "overview", "primaryOrder": 1 },
     { "type": "progress", "label": "Mana Bar", "scope": "overview" },

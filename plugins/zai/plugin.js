@@ -5,15 +5,39 @@
   const PERIOD_MS = 5 * 60 * 60 * 1000
   const WEEK_MS = 7 * 24 * 60 * 60 * 1000
   const MONTH_MS = 30 * 24 * 60 * 60 * 1000
+  const KEYCHAIN_SERVICE = "OpenUsage-zai-credential"
 
-  function loadApiKey(ctx) {
+  function readStoredCredential(ctx) {
+    if (!ctx.host.keychain || typeof ctx.host.keychain.readGenericPassword !== "function") {
+      return null
+    }
+    try {
+      const stored = ctx.host.keychain.readGenericPassword(KEYCHAIN_SERVICE)
+      if (typeof stored === "string" && stored.trim()) return stored.trim()
+    } catch (e) {
+      if (String(e).indexOf("item not found") === -1) {
+        ctx.host.log.warn("keychain read failed for stored credential: " + String(e))
+      }
+    }
+    return null
+  }
+
+  function loadApiKeyWithSource(ctx) {
+    const stored = readStoredCredential(ctx)
+    if (stored) return { value: stored, source: "Settings" }
+
     const zai = ctx.host.env.get("ZAI_API_KEY")
-    if (typeof zai === "string" && zai.trim()) return zai.trim()
+    if (typeof zai === "string" && zai.trim()) return { value: zai.trim(), source: "Env" }
 
     const glm = ctx.host.env.get("GLM_API_KEY")
-    if (typeof glm === "string" && glm.trim()) return glm.trim()
+    if (typeof glm === "string" && glm.trim()) return { value: glm.trim(), source: "Env" }
 
     return null
+  }
+
+  function loadApiKey(ctx) {
+    const loaded = loadApiKeyWithSource(ctx)
+    return loaded ? loaded.value : null
   }
 
   function readNumber(value) {
@@ -107,7 +131,7 @@
   function probe(ctx) {
     const apiKey = loadApiKey(ctx)
     if (!apiKey) {
-      throw "No ZAI_API_KEY found. Set up environment variable first."
+      throw "No Z.ai API key found. Set it in Settings → Credentials, or the ZAI_API_KEY / GLM_API_KEY env vars."
     }
 
     const sub = fetchSubscription(ctx, apiKey)
@@ -192,5 +216,10 @@
     return { plan, lines }
   }
 
-  globalThis.__openusage_plugin = { id: "zai", probe }
+  function checkCredentials(ctx) {
+    const loaded = loadApiKeyWithSource(ctx)
+    return loaded ? { configured: true, source: loaded.source } : { configured: false }
+  }
+
+  globalThis.__openusage_plugin = { id: "zai", probe, checkCredentials }
 })()

@@ -120,7 +120,37 @@ describe("zai plugin", () => {
   it("throws when no env vars set", async () => {
     const ctx = makeCtx()
     const plugin = await loadPlugin()
-    expect(() => plugin.probe(ctx)).toThrow("No ZAI_API_KEY found. Set up environment variable first.")
+    expect(() => plugin.probe(ctx)).toThrow(
+      "No Z.ai API key found. Set it in Settings → Credentials, or the ZAI_API_KEY / GLM_API_KEY env vars."
+    )
+  })
+
+  it("prefers the credential stored in keychain over env vars", async () => {
+    const ctx = makeCtx()
+    mockEnvWithKey(ctx, "env-key")
+    ctx.host.keychain.readGenericPassword.mockReturnValue("stored-key")
+    mockHttp(ctx)
+
+    const plugin = await loadPlugin()
+    plugin.probe(ctx)
+    expect(ctx.host.keychain.readGenericPassword).toHaveBeenCalledWith("OpenUsage-zai-credential")
+    const call = ctx.host.http.request.mock.calls[0][0]
+    expect(call.headers.Authorization).toBe("Bearer stored-key")
+  })
+
+  it("checkCredentials reports source Settings, Env, or not configured", async () => {
+    const plugin = await loadPlugin()
+
+    const keychainCtx = makeCtx()
+    keychainCtx.host.keychain.readGenericPassword.mockReturnValue("stored-key")
+    expect(plugin.checkCredentials(keychainCtx)).toEqual({ configured: true, source: "Settings" })
+
+    const envCtx = makeCtx()
+    mockEnvWithKey(envCtx, "env-key")
+    expect(plugin.checkCredentials(envCtx)).toEqual({ configured: true, source: "Env" })
+
+    const emptyCtx = makeCtx()
+    expect(plugin.checkCredentials(emptyCtx)).toEqual({ configured: false })
   })
 
   it("uses ZAI_API_KEY when set", async () => {

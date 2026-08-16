@@ -1,16 +1,34 @@
 (function () {
   const BALANCE_URL = "https://api.deepseek.com/user/balance"
   const SPENT_STATE_FILE = "spent-today.json"
+  const KEYCHAIN_SERVICE = "OpenUsage-deepseek-credential"
 
-  function loadApiKey(ctx) {
+  function loadApiKeyWithSource(ctx) {
+    if (ctx.host.keychain && typeof ctx.host.keychain.readGenericPassword === "function") {
+      try {
+        const stored = ctx.host.keychain.readGenericPassword(KEYCHAIN_SERVICE)
+        if (typeof stored === "string" && stored.trim()) {
+          return { value: stored.trim(), source: "Settings" }
+        }
+      } catch (e) {
+        if (String(e).indexOf("item not found") === -1) {
+          ctx.host.log.warn("keychain read failed for stored credential: " + String(e))
+        }
+      }
+    }
     let value = null
     try {
       value = ctx.host.env.get("DEEPSEEK_API_KEY")
     } catch (e) {
       ctx.host.log.warn("env read failed for DEEPSEEK_API_KEY: " + String(e))
     }
-    if (typeof value === "string" && value.trim()) return value.trim()
+    if (typeof value === "string" && value.trim()) return { value: value.trim(), source: "Env" }
     return null
+  }
+
+  function loadApiKey(ctx) {
+    const loaded = loadApiKeyWithSource(ctx)
+    return loaded ? loaded.value : null
   }
 
   function fetchBalance(ctx, apiKey) {
@@ -197,7 +215,7 @@
   function probe(ctx) {
     const apiKey = loadApiKey(ctx)
     if (!apiKey) {
-      throw "DeepSeek API key missing. Set DEEPSEEK_API_KEY."
+      throw "DeepSeek API key missing. Set it in Settings → Credentials, or the DEEPSEEK_API_KEY env var."
     }
 
     const data = fetchBalance(ctx, apiKey)
@@ -228,5 +246,10 @@
     return { lines }
   }
 
-  globalThis.__openusage_plugin = { id: "deepseek", probe }
+  function checkCredentials(ctx) {
+    const loaded = loadApiKeyWithSource(ctx)
+    return loaded ? { configured: true, source: loaded.source } : { configured: false }
+  }
+
+  globalThis.__openusage_plugin = { id: "deepseek", probe, checkCredentials }
 })()

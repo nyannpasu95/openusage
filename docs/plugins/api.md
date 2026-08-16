@@ -342,6 +342,41 @@ try {
 
 Any token refresh logic (e.g., OAuth refresh) must run inside `probe(ctx)` at those times.
 
+## Credential Status (`checkCredentials`)
+
+Plugins whose manifest declares a `credential` block must also export
+`checkCredentials(ctx)`. The app runs it (in the same sandbox, with the same
+host APIs as `probe`) to show whether the provider is connected in Settings
+and on the provider card. It must be fast and local — no network requests.
+
+```javascript
+globalThis.__openusage_plugin = {
+  id: "my-provider",
+  probe,
+  checkCredentials(ctx) {
+    const key = loadApiKey(ctx) // reuse the same resolution as probe()
+    return key
+      ? { configured: true, source: "Env" }
+      : { configured: false }
+  },
+}
+```
+
+Return shape:
+
+| Field        | Type    | Description |
+|--------------|---------|-------------|
+| `configured` | boolean | Whether a credential was found |
+| `source`     | string  | Optional, short label shown in Settings (e.g. `"Settings"`, `"Env"`, `"Claude Code"`) |
+
+For plugins that accept a pasted key or cookie, read the app-stored value
+first; it lives in the macOS Keychain under the service
+`OpenUsage-{pluginId}-credential` (service-only, no account):
+
+```javascript
+const stored = ctx.host.keychain.readGenericPassword("OpenUsage-my-provider-credential")
+```
+
 ## Line Builders
 
 Helper functions for creating output lines. All builders use an options object pattern.

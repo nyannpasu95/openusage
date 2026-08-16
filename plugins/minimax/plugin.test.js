@@ -51,8 +51,44 @@ describe("minimax plugin", () => {
     setEnv(ctx, {})
     const plugin = await loadPlugin()
     expect(() => plugin.probe(ctx)).toThrow(
-      "MiniMax API key missing. Set MINIMAX_API_KEY or MINIMAX_CN_API_KEY."
+      "MiniMax API key missing. Set it in Settings → Credentials, or the MINIMAX_API_KEY / MINIMAX_CN_API_KEY env vars."
     )
+  })
+
+  it("prefers the credential stored in keychain over env vars", async () => {
+    const ctx = makeCtx()
+    setEnv(ctx, { MINIMAX_API_KEY: "env-key" })
+    ctx.host.keychain.readGenericPassword.mockReturnValue("stored-key")
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify(successPayload()),
+    })
+
+    const plugin = await loadPlugin()
+    plugin.probe(ctx)
+
+    expect(ctx.host.keychain.readGenericPassword).toHaveBeenCalledWith(
+      "OpenUsage-minimax-credential"
+    )
+    const call = ctx.host.http.request.mock.calls[0][0]
+    expect(call.headers.Authorization).toBe("Bearer stored-key")
+  })
+
+  it("checkCredentials reports source Settings, Env, or not configured", async () => {
+    const plugin = await loadPlugin()
+
+    const keychainCtx = makeCtx()
+    keychainCtx.host.keychain.readGenericPassword.mockReturnValue("stored-key")
+    expect(plugin.checkCredentials(keychainCtx)).toEqual({ configured: true, source: "Settings" })
+
+    const envCtx = makeCtx()
+    setEnv(envCtx, { MINIMAX_API_KEY: "env-key" })
+    expect(plugin.checkCredentials(envCtx)).toEqual({ configured: true, source: "Env" })
+
+    const emptyCtx = makeCtx()
+    setEnv(emptyCtx, {})
+    expect(plugin.checkCredentials(emptyCtx)).toEqual({ configured: false })
   })
 
   it("uses MINIMAX_API_KEY for auth header", async () => {

@@ -75,11 +75,20 @@ describe("grok plugin", () => {
     expect(() => plugin.probe(ctx)).toThrow("Grok not logged in. Run `grok login`.")
   })
 
+  it("checkCredentials reports configured when the auth file exists", async () => {
+    const ctx = makeCtx()
+    writeAuth(ctx)
+    const plugin = await loadPlugin()
+    expect(plugin.checkCredentials(ctx)).toEqual({ configured: true, source: "Grok CLI" })
+    expect(plugin.checkCredentials(makeCtx())).toEqual({ configured: false })
+  })
+
   it("throws when auth file has no usable token", async () => {
     const ctx = makeCtx()
     ctx.host.fs.writeText(AUTH_PATH, JSON.stringify({ account: { email: "user@example.com" } }))
     const plugin = await loadPlugin()
     expect(() => plugin.probe(ctx)).toThrow("Grok auth invalid. Run `grok login` again.")
+    expect(plugin.checkCredentials(ctx)).toEqual({ configured: false })
   })
 
   it("throws when the only token is expired and no refresh token is available", async () => {

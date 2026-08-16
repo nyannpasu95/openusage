@@ -32,8 +32,8 @@
 
   function loginError() {
     return (
-      "Qianwen console session expired. Copy a fresh Cookie header from " +
-      "platform.qianwenai.com, then run: pbpaste > " +
+      "Qianwen console session expired. Paste a fresh Cookie header in " +
+      "Settings → Credentials, or run: pbpaste > " +
       COOKIE_FILE +
       "."
     )
@@ -79,8 +79,21 @@
   }
 
   const COOKIE_FILE = "~/.openusage/qwen-cookie.txt"
+  const KEYCHAIN_SERVICE = "OpenUsage-qwen-credential"
 
-  function loadCookie(ctx) {
+  function loadCookieWithSource(ctx) {
+    if (ctx.host.keychain && typeof ctx.host.keychain.readGenericPassword === "function") {
+      try {
+        const stored = ctx.host.keychain.readGenericPassword(KEYCHAIN_SERVICE)
+        const fromKeychain = readString(stored)
+        if (fromKeychain) return { value: fromKeychain, source: "Settings" }
+      } catch (e) {
+        if (String(e).indexOf("item not found") === -1) {
+          ctx.host.log.warn("keychain read failed for stored credential: " + String(e))
+        }
+      }
+    }
+
     let value = null
     try {
       value = ctx.host.env.get(COOKIE_ENV_VAR)
@@ -88,16 +101,22 @@
       ctx.host.log.warn("env read failed for " + COOKIE_ENV_VAR + ": " + String(e))
     }
     const fromEnv = readString(value)
-    if (fromEnv) return fromEnv
+    if (fromEnv) return { value: fromEnv, source: "Env" }
 
     try {
       if (ctx.host.fs.exists(COOKIE_FILE)) {
-        return readString(ctx.host.fs.readText(COOKIE_FILE))
+        const fromFile = readString(ctx.host.fs.readText(COOKIE_FILE))
+        if (fromFile) return { value: fromFile, source: "File" }
       }
     } catch (e) {
       ctx.host.log.warn("cookie file read failed (" + COOKIE_FILE + "): " + String(e))
     }
     return null
+  }
+
+  function loadCookie(ctx) {
+    const loaded = loadCookieWithSource(ctx)
+    return loaded ? loaded.value : null
   }
 
   function isLoginProblem(code, message) {
@@ -518,11 +537,9 @@
     const cookie = loadCookie(ctx)
     if (!cookie) {
       throw (
-        "Qianwen console cookie missing. Copy the Cookie header from " +
-        "platform.qianwenai.com, then run: pbpaste > " +
+        "Qianwen console cookie missing. Paste the Cookie header from " +
+        "platform.qianwenai.com in Settings → Credentials (or run: pbpaste > " +
         COOKIE_FILE +
-        " (or set " +
-        COOKIE_ENV_VAR +
         ")."
       )
     }
@@ -544,5 +561,10 @@
     throw "No active Token Plan subscription found for this account."
   }
 
-  globalThis.__openusage_plugin = { id: "qwen", probe }
+  function checkCredentials(ctx) {
+    const loaded = loadCookieWithSource(ctx)
+    return loaded ? { configured: true, source: loaded.source } : { configured: false }
+  }
+
+  globalThis.__openusage_plugin = { id: "qwen", probe, checkCredentials }
 })()

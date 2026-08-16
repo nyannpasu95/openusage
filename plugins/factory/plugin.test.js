@@ -39,6 +39,19 @@ describe("factory plugin", () => {
     expect(() => plugin.probe(ctx)).toThrow("Not logged in")
   })
 
+  it("checkCredentials reports file auth and missing sources", async () => {
+    const plugin = await loadPlugin()
+
+    const fileCtx = makeCtx()
+    fileCtx.host.fs.writeText("~/.factory/auth.json", JSON.stringify({
+      access_token: makeJwt(Math.floor(Date.now() / 1000) + 3600),
+      refresh_token: "refresh",
+    }))
+    expect(plugin.checkCredentials(fileCtx)).toEqual({ configured: true, source: "Factory CLI" })
+
+    expect(plugin.checkCredentials(makeCtx())).toEqual({ configured: false })
+  })
+
   it("throws when auth json is invalid", async () => {
     const ctx = makeCtx()
     ctx.host.fs.writeText("~/.factory/auth.json", "{bad")

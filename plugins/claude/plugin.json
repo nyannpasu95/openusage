@@ -6,6 +6,11 @@
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#DE7356",
+  "credential": {
+    "kind": "detected",
+    "label": "Claude Code Login",
+    "hint": "Log in with Claude Code once; the session is read automatically."
+  },
   "links": [
     { "label": "Status", "url": "https://status.anthropic.com/" },
     { "label": "Console", "url": "https://console.anthropic.com/" }

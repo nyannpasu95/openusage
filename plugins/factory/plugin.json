@@ -6,6 +6,11 @@
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#020202",
+  "credential": {
+    "kind": "detected",
+    "label": "Factory Login",
+    "hint": "Log in with the Factory/Droid CLI to create a local session."
+  },
   "lines": [
     { "type": "progress", "label": "Standard", "scope": "overview", "primaryOrder": 1 },
     { "type": "progress", "label": "Premium", "scope": "detail" }

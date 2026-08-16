@@ -962,5 +962,14 @@
     throw ERR_NOT_LOGGED_IN
   }
 
-  globalThis.__openusage_plugin = { id: "codex", probe }
+  function checkCredentials(ctx) {
+    if (loadAuthFromKeychain(ctx)) return { configured: true, source: "Codex CLI" }
+    const fileCandidates = loadFileAuthCandidates(ctx)
+    if (fileCandidates.candidates.length > 0) {
+      return { configured: true, source: "Codex CLI" }
+    }
+    return { configured: false }
+  }
+
+  globalThis.__openusage_plugin = { id: "codex", probe, checkCredentials }
 })()

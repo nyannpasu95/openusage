@@ -25,6 +25,18 @@ pub struct PluginLink {
     pub url: String,
 }
 
+/// Declares how a plugin authenticates so the app can surface credential
+/// status. `apiKey`/`cookie` plugins accept manual entry in Settings;
+/// `detected` plugins only show status plus a hint (credentials come from
+/// another tool's login).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManifestCredential {
+    pub kind: String,
+    pub label: String,
+    pub hint: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginManifest {
@@ -38,6 +50,7 @@ pub struct PluginManifest {
     pub lines: Vec<ManifestLine>,
     #[serde(default)]
     pub links: Vec<PluginLink>,
+    pub credential: Option<ManifestCredential>,
 }
 
 #[derive(Debug, Clone)]
@@ -93,6 +106,7 @@ pub fn weekly_candidate(lines: &[ManifestLine]) -> Option<&str> {
 const SUPPORTED_SCHEMA_VERSION: u32 = 1;
 const VALID_LINE_TYPES: &[&str] = &["text", "progress", "badge", "barChart"];
 const VALID_SCOPES: &[&str] = &["overview", "detail"];
+const VALID_CREDENTIAL_KINDS: &[&str] = &["apiKey", "cookie", "detected"];
 
 fn load_single_plugin(
     plugin_dir: &std::path::Path,
@@ -112,6 +126,16 @@ fn load_single_plugin(
     validate_plugin_id(&manifest.id)?;
 
     manifest.links = sanitize_plugin_links(&manifest.id, std::mem::take(&mut manifest.links));
+
+    if let Some(credential) = manifest.credential.as_ref()
+        && !VALID_CREDENTIAL_KINDS.contains(&credential.kind.as_str())
+    {
+        return Err(format!(
+            "plugin {} credential has invalid kind '{}' (expected one of {:?})",
+            manifest.id, credential.kind, VALID_CREDENTIAL_KINDS
+        )
+        .into());
+    }
 
     for line in manifest.lines.iter() {
         if !VALID_LINE_TYPES.contains(&line.line_type.as_str()) {
@@ -513,6 +537,89 @@ mod tests {
         assert!(validate_plugin_id("my_plugin").is_err());
         assert!(validate_plugin_id("my.plugin").is_err());
         assert!(validate_plugin_id("my plugin").is_err());
+    }
+
+    #[test]
+    fn credential_is_none_by_default() {
+        let manifest = parse_manifest(
+            r#"
+            {
+              "schemaVersion": 1,
+              "id": "x",
+              "name": "X",
+              "version": "0.0.1",
+              "entry": "plugin.js",
+              "icon": "icon.svg",
+              "brandColor": null,
+              "lines": [{ "type": "text", "label": "A", "scope": "overview" }]
+            }
+            "#,
+        );
+        assert!(manifest.credential.is_none());
+    }
+
+    #[test]
+    fn credential_parsed_with_optional_hint() {
+        let manifest = parse_manifest(
+            r#"
+            {
+              "schemaVersion": 1,
+              "id": "x",
+              "name": "X",
+              "version": "0.0.1",
+              "entry": "plugin.js",
+              "icon": "icon.svg",
+              "brandColor": null,
+              "lines": [{ "type": "text", "label": "A", "scope": "overview" }],
+              "credential": { "kind": "apiKey", "label": "DeepSeek API Key" },
+              "links": []
+            }
+            "#,
+        );
+        let credential = manifest.credential.expect("credential");
+        assert_eq!(credential.kind, "apiKey");
+        assert_eq!(credential.label, "DeepSeek API Key");
+        assert!(credential.hint.is_none());
+    }
+
+    #[test]
+    fn load_single_plugin_rejects_invalid_credential_kind() {
+        use std::fs;
+        let tmp = std::env::temp_dir().join(format!(
+            "ohmyusage-manifest-cred-test-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(&tmp).unwrap();
+        fs::write(
+            tmp.join("plugin.json"),
+            r#"{
+              "schemaVersion": 1,
+              "id": "x",
+              "name": "X",
+              "version": "0.0.1",
+              "entry": "plugin.js",
+              "icon": "icon.svg",
+              "brandColor": null,
+              "lines": [{ "type": "text", "label": "A", "scope": "overview" }],
+              "credential": { "kind": "bogus", "label": "Key" }
+            }"#,
+        )
+        .unwrap();
+        fs::write(tmp.join("plugin.js"), "function probe(){}").unwrap();
+        fs::write(tmp.join("icon.svg"), "<svg></svg>").unwrap();
+
+        let result = load_single_plugin(&tmp);
+        let _ = fs::remove_dir_all(&tmp);
+
+        let err = result.expect_err("invalid credential kind should fail loading");
+        assert!(
+            err.to_string().contains("invalid kind 'bogus'"),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]

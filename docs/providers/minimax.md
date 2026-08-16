@@ -11,19 +11,19 @@
 
 ## Authentication
 
-The plugin supports automatic region detection and reads API keys based on the selected region:
+The plugin supports automatic region detection and reads API keys based on the selected region. A key pasted in **Settings → Credentials** (stored in the macOS Keychain) is tried first for both regions, before any environment variable.
 
 **Region auto-selection:**
 - If `MINIMAX_CN_API_KEY` is set: tries `CN` first, then `GLOBAL`
 - If `MINIMAX_CN_API_KEY` is not set: tries `GLOBAL` first, then `CN`
 
 **Key lookup by region:**
-- **CN region**: `MINIMAX_CN_API_KEY` → `MINIMAX_API_KEY` → `MINIMAX_API_TOKEN`
-- **GLOBAL region**: `MINIMAX_API_KEY` → `MINIMAX_API_TOKEN`
+- **CN region**: Settings credential → `MINIMAX_CN_API_KEY` → `MINIMAX_API_KEY` → `MINIMAX_API_TOKEN`
+- **GLOBAL region**: Settings credential → `MINIMAX_API_KEY` → `MINIMAX_API_TOKEN`
 
 If no key is found after attempting both regions, it throws:
 
-- `MiniMax API key missing. Set MINIMAX_API_KEY or MINIMAX_CN_API_KEY.`
+- `MiniMax API key missing. Set it in Settings → Credentials, or the MINIMAX_API_KEY / MINIMAX_CN_API_KEY env vars.`
 
 ## Data Source
 

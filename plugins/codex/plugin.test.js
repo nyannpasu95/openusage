@@ -52,6 +52,37 @@ describe("codex plugin", () => {
     expect(() => plugin.probe(ctx)).toThrow("Not logged in")
   })
 
+  it("checkCredentials reports keychain, file, and missing auth sources", async () => {
+    const plugin = await loadPlugin()
+
+    const keychainCtx = makeCtx()
+    keychainCtx.host.keychain.readGenericPassword.mockReturnValue(
+      JSON.stringify({
+        tokens: { access_token: "keychain-token" },
+        last_refresh: new Date().toISOString(),
+      })
+    )
+    expect(plugin.checkCredentials(keychainCtx)).toEqual({
+      configured: true,
+      source: "Codex CLI",
+    })
+
+    const fileCtx = makeCtx()
+    fileCtx.host.fs.writeText(
+      "~/.codex/auth.json",
+      JSON.stringify({
+        tokens: { access_token: "file-token" },
+        last_refresh: new Date().toISOString(),
+      })
+    )
+    expect(plugin.checkCredentials(fileCtx)).toEqual({
+      configured: true,
+      source: "Codex CLI",
+    })
+
+    expect(plugin.checkCredentials(makeCtx())).toEqual({ configured: false })
+  })
+
   it("loads auth from keychain when auth file is missing", async () => {
     const ctx = makeCtx()
     ctx.host.keychain.readGenericPassword.mockReturnValue(JSON.stringify({

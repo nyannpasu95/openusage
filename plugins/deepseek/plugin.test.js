@@ -59,6 +59,7 @@ describe("deepseek plugin", () => {
     const plugin = await loadPlugin()
     expect(plugin.id).toBe("deepseek")
     expect(typeof plugin.probe).toBe("function")
+    expect(typeof plugin.checkCredentials).toBe("function")
   })
 
   it("throws when API key is missing", async () => {
@@ -66,8 +67,62 @@ describe("deepseek plugin", () => {
     setEnv(ctx, {})
     const plugin = await loadPlugin()
     expect(() => plugin.probe(ctx)).toThrow(
-      "DeepSeek API key missing. Set DEEPSEEK_API_KEY."
+      "DeepSeek API key missing. Set it in Settings → Credentials, or the DEEPSEEK_API_KEY env var."
     )
+  })
+
+  it("prefers the credential stored in keychain over env", async () => {
+    const ctx = makeCtx()
+    setEnv(ctx, { DEEPSEEK_API_KEY: "env-key" })
+    ctx.host.keychain.readGenericPassword.mockReturnValue("  stored-key  ")
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify(balancePayload()),
+    })
+    const plugin = await loadPlugin()
+    plugin.probe(ctx)
+    expect(ctx.host.keychain.readGenericPassword).toHaveBeenCalledWith("OpenUsage-deepseek-credential")
+    const call = ctx.host.http.request.mock.calls[0][0]
+    expect(call.headers.Authorization).toBe("Bearer stored-key")
+  })
+
+  it("falls back to env when keychain has no stored credential", async () => {
+    const ctx = makeCtx()
+    ctx.host.keychain.readGenericPassword.mockImplementation(() => {
+      throw new Error("keychain item not found: could not be found")
+    })
+    setEnv(ctx, { DEEPSEEK_API_KEY: "env-key" })
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify(balancePayload()),
+    })
+    const plugin = await loadPlugin()
+    plugin.probe(ctx)
+    const call = ctx.host.http.request.mock.calls[0][0]
+    expect(call.headers.Authorization).toBe("Bearer env-key")
+  })
+
+  it("checkCredentials reports configured with source Settings", async () => {
+    const ctx = makeCtx()
+    ctx.host.keychain.readGenericPassword.mockReturnValue("stored-key")
+    const plugin = await loadPlugin()
+    expect(plugin.checkCredentials(ctx)).toEqual({ configured: true, source: "Settings" })
+  })
+
+  it("checkCredentials reports configured with source Env", async () => {
+    const ctx = makeCtx()
+    setEnv(ctx, { DEEPSEEK_API_KEY: "env-key" })
+    const plugin = await loadPlugin()
+    expect(plugin.checkCredentials(ctx)).toEqual({ configured: true, source: "Env" })
+  })
+
+  it("checkCredentials reports not configured when no source has a key", async () => {
+    const ctx = makeCtx()
+    setEnv(ctx, {})
+    const plugin = await loadPlugin()
+    expect(plugin.checkCredentials(ctx)).toEqual({ configured: false })
   })
 
   it("trims whitespace from API key before using it", async () => {
@@ -265,7 +320,7 @@ describe("deepseek plugin", () => {
     })
     const plugin = await loadPlugin()
     expect(() => plugin.probe(ctx)).toThrow(
-      "DeepSeek API key missing. Set DEEPSEEK_API_KEY."
+      "DeepSeek API key missing. Set it in Settings → Credentials, or the DEEPSEEK_API_KEY env var."
     )
   })
 

@@ -35,6 +35,26 @@ export type PluginLink = {
   url: string
 }
 
+export type CredentialKind = "apiKey" | "cookie" | "detected"
+
+/** Credential model declared by a plugin manifest. */
+export type CredentialMeta = {
+  kind: CredentialKind
+  label: string
+  hint?: string
+}
+
+/** Runtime credential status for a plugin, from `get_credential_statuses`. */
+export type CredentialStatus = {
+  pluginId: string
+  kind: CredentialKind
+  label: string
+  hint?: string
+  configured: boolean
+  source?: string
+  error?: string
+}
+
 export type PluginOutput = {
   providerId: string
   displayName: string
@@ -54,6 +74,8 @@ export type PluginMeta = {
   primaryCandidates: string[]
   /** Label of the line marked `"period": "weekly"`, if the provider has one. */
   weeklyCandidate?: string
+  /** Declares the plugin's credential model, if it has one. */
+  credential?: CredentialMeta
 }
 
 export type PluginDisplayState = {
