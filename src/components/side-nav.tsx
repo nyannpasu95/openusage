@@ -57,10 +57,9 @@ function NavButton({ isActive, onClick, onContextMenu, children, "aria-label": a
       aria-label={ariaLabel}
       className={cn(
         "relative mx-2 flex size-9 items-center justify-center rounded-md border border-transparent transition-colors",
-        "hover:border-border-strong hover:bg-sidebar-accent",
         isActive
-          ? "border-foreground bg-foreground text-background"
-          : "text-muted-foreground hover:text-foreground"
+          ? "border-foreground bg-foreground text-background hover:bg-foreground/85"
+          : "text-muted-foreground hover:border-border-strong hover:bg-sidebar-accent hover:text-foreground"
       )}
     >
       {children}
